@@ -1,0 +1,13 @@
+# Dive data (binary output, not version controlled)
+logbook/data/
+
+# External C library (protocol reference, obtain separately)
+libdivecomputer/
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/

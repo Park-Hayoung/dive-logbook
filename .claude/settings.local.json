@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/coreit -name dctool* -o -name subsurface*)",
+      "WebSearch",
+      "Bash(pip list:*)",
+      "WebFetch(domain:shearwater.com)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(find C:Userscoreitwoozoo_dive_project -type d -name *src* -o -type d -name *source*)",
+      "Bash(ls -lh /c/Users/coreit/woozoo_dive_project/logbook/dive_*.bin)",
+      "Bash(xxd:*)",
+      "Bash(gh repo:*)",
+      "Bash(where gh:*)",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI:/c/Program Files \\(x86\\)/GitHub CLI\")",
+      "Bash(gh --version)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" --version)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh auth:*)",
+      "Bash(file:*)",
+      "Bash(find . -type f -not -path '*/\\\\.*' -not -path '*/__pycache__/*' -not -path '*/node_modules/*' -exec wc -l {} +)",
+      "Bash(ls -lh /c/Users/coreit/woozoo_dive_project/logbook/dive_*)",
+      "Bash(find . -maxdepth 1 -type f ! -path '*/.git*' -exec ls -lh {})",
+      "Bash(ls -1 dive_*.bin)",
+      "WebFetch(domain:superthread.page)",
+      "mcp__playwright__browser_navigate",
+      "Bash(cd:*)",
+      "Bash(mv shearwater_download.py logbook/downloader/)",
+      "Bash(mv ble_scan.py logbook/downloader/)",
+      "Bash(mv parse_dive_logs.py logbook/parser/)",
+      "Bash(mv logbook/device_info.txt logbook/data/raw/)",
+      "Bash(mv logbook/manifest.bin logbook/data/raw/)",
+      "Bash(mv logbook/dive_*.bin logbook/data/raw/)",
+      "Bash(mv logbook/.gitattributes logbook/data/raw/)",
+      "Bash(mv output/dive_data.json logbook/data/reports/)",
+      "Bash(mv output/dive_report.html logbook/data/reports/)",
+      "Bash(mv output/dive_report.md logbook/data/reports/)",
+      "Bash(rm -rf logbook/.git)",
+      "Bash(rmdir output:*)"
+    ]
+  }
+}

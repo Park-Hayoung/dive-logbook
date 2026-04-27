@@ -1,0 +1,45 @@
+# Deploy on Synology DS220+ via Container Manager.
+# Place this folder in /volume1/docker/divelog/ and run:
+#   docker compose up -d
+#
+# Prereqs:
+#  - .env filled out (copy from .env.example)
+#  - Cloudflare Tunnel created in Cloudflare Zero Trust dashboard
+#  - CLOUDFLARE_TUNNEL_TOKEN set (from Tunnel "Install connector" page)
+#  - Tunnel ingress rule routes media.dooname.cloud → http://media-server:3000
+
+services:
+  media-server:
+    build: .
+    image: divelog/media-server:latest
+    container_name: divelog-media-server
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # Map the NAS share where files will live.
+      # Adjust source path to your actual Synology shared folder.
+      - /volume1/divelog-media:/data
+    networks:
+      - divelog
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: divelog-cloudflared
+    restart: unless-stopped
+    # --protocol http2 forces TCP/443 instead of QUIC/UDP.
+    # NAS Docker environments can't allocate the 7 MB UDP receive buffer
+    # that QUIC wants, causing "control stream encountered a failure" loops.
+    command: tunnel --no-autoupdate --protocol http2 run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - divelog
+    depends_on:
+      - media-server
+
+networks:
+  divelog:
+    driver: bridge

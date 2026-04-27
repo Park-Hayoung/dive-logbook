@@ -7,7 +7,29 @@ libdivecomputer/
 # Python
 __pycache__/
 *.pyc
+*.pyo
+.venv/
+venv/
+
+# Node (any subproject)
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment files (root + subprojects)
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
 .idea/
+.DS_Store
+
+# Playwright MCP cache
+.playwright-mcp/
+
+# OS
+Thumbs.db

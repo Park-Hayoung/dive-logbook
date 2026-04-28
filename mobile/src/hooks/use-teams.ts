@@ -175,15 +175,25 @@ export function useMyTeam(userId: string | undefined) {
 export function useCreateTeam(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; description?: string | null }) => {
-      if (!userId) throw new Error("로그인이 필요합니다.");
+    mutationFn: async (input: {
+      /** Optional preset id — pass when image was uploaded under this id first. */
+      id?: string;
+      name: string;
+      description?: string | null;
+      imageUrl?: string | null;
+    }) => {
+      if (!userId) throw new Error("로그인이 필요해요.");
+      const insertRow: Record<string, unknown> = {
+        name: input.name,
+        leader_id: userId,
+        description: input.description ?? null,
+        image_url: input.imageUrl ?? null,
+      };
+      if (input.id) insertRow.id = input.id;
+
       const { data: team, error } = await supabase
         .from("teams")
-        .insert({
-          name: input.name,
-          leader_id: userId,
-          description: input.description ?? null,
-        })
+        .insert(insertRow)
         .select("id")
         .single();
       if (error) throw new Error(error.message);
@@ -205,11 +215,38 @@ export function useCreateTeam(userId: string | undefined) {
   });
 }
 
+export function useUpdateTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      teamId: string;
+      name?: string;
+      description?: string | null;
+      imageUrl?: string | null;
+    }) => {
+      const update: Record<string, unknown> = {};
+      if (input.name !== undefined) update.name = input.name;
+      if (input.description !== undefined) update.description = input.description;
+      if (input.imageUrl !== undefined) update.image_url = input.imageUrl;
+      const { error } = await supabase
+        .from("teams")
+        .update(update)
+        .eq("id", input.teamId);
+      if (error) throw new Error(error.message || JSON.stringify(error));
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["team", variables.teamId] });
+      qc.invalidateQueries({ queryKey: ["teams"] });
+      qc.invalidateQueries({ queryKey: ["my-team"] });
+    },
+  });
+}
+
 export function useRequestJoinTeam(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (teamId: string) => {
-      if (!userId) throw new Error("로그인이 필요합니다.");
+      if (!userId) throw new Error("로그인이 필요해요.");
       const { error } = await supabase.from("team_members").insert({
         team_id: teamId,
         user_id: userId,
@@ -229,7 +266,7 @@ export function useLeaveTeam(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (teamId: string) => {
-      if (!userId) throw new Error("로그인이 필요합니다.");
+      if (!userId) throw new Error("로그인이 필요해요.");
       const { error } = await supabase
         .from("team_members")
         .delete()

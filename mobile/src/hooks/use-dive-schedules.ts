@@ -94,7 +94,7 @@ export function useCreateDiveSchedule(userId: string | undefined) {
       point?: string | null;
       shopId?: string | null;
     }) => {
-      if (!userId) throw new Error("로그인이 필요합니다.");
+      if (!userId) throw new Error("로그인이 필요해요.");
       const { error } = await supabase.from("dive_schedules").insert({
         user_id: userId,
         title: input.title,
@@ -115,7 +115,7 @@ export function useDeleteDiveSchedule(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (scheduleId: string) => {
-      if (!userId) throw new Error("로그인이 필요합니다.");
+      if (!userId) throw new Error("로그인이 필요해요.");
       const { error } = await supabase
         .from("dive_schedules")
         .delete()

@@ -6,6 +6,14 @@ export type MediaProvider =
 
 export type MediaKind = "image" | "video";
 
+// Where the file lives on the storage backend. Mirrors the server-side
+// `kind/scopeId` layout.
+export type UploadScope =
+  | { type: "dive"; diveId: string }
+  | { type: "avatar" } // user-scoped automatically
+  | { type: "feed" } // user-scoped automatically
+  | { type: "team"; teamId: string };
+
 export type UploadResult = {
   url: string;
   provider: MediaProvider;
@@ -14,15 +22,17 @@ export type UploadResult = {
 };
 
 export type UploadInput = {
-  diveId: string;
+  scope: UploadScope;
   localUri: string;
   originalFilename: string;
   contentType: string;
-  kind: MediaKind;
+  /** image|video — only relevant for dive media (stored in dive_media.kind). */
+  kind?: MediaKind;
 };
 
 export interface MediaStorage {
   readonly provider: MediaProvider;
   upload(input: UploadInput): Promise<UploadResult>;
-  delete(filename: string, diveId: string): Promise<void>;
+  /** Delete a file by its scope + filename. */
+  delete(scope: UploadScope, filename: string): Promise<void>;
 }

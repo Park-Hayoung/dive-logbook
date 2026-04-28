@@ -67,7 +67,7 @@ export function useUploadDiveMedia(diveId: string | undefined) {
       if (!diveId) throw new Error("diveId required");
 
       const uploaded = await mediaStorage.upload({
-        diveId,
+        scope: { type: "dive", diveId },
         localUri: input.localUri,
         originalFilename: input.originalFilename,
         contentType: input.contentType,

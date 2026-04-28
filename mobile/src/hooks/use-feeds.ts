@@ -95,7 +95,7 @@ export function useToggleFeedLike(currentUserId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { feedId: string; currentlyLiked: boolean }) => {
-      if (!currentUserId) throw new Error("로그인이 필요합니다.");
+      if (!currentUserId) throw new Error("로그인이 필요해요.");
       if (input.currentlyLiked) {
         const { error } = await supabase
           .from("feed_likes")
@@ -128,7 +128,7 @@ export function useCreateFeed(currentUserId: string | undefined) {
       linkedDiveId?: string | null;
       imageUrl?: string | null;
     }) => {
-      if (!currentUserId) throw new Error("로그인이 필요합니다.");
+      if (!currentUserId) throw new Error("로그인이 필요해요.");
       const { error } = await supabase.from("feeds").insert({
         author_id: currentUserId,
         type: input.type ?? "normal",
@@ -138,6 +138,89 @@ export function useCreateFeed(currentUserId: string | undefined) {
         image_url: input.imageUrl ?? null,
       });
       if (error) throw new Error(error.message || JSON.stringify(error));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["feeds"] });
+    },
+  });
+}
+
+// Extract storage path from a feed-media public URL.
+// Layout: https://<ref>.supabase.co/storage/v1/object/public/feed-media/<userId>/<filename>
+// Returns null when the URL doesn't belong to the bucket (e.g. external image).
+function feedMediaPathFromUrl(publicUrl: string): string | null {
+  const marker = "/storage/v1/object/public/feed-media/";
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  return publicUrl.slice(idx + marker.length);
+}
+
+export function useUpdateFeed(currentUserId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      feedId: string;
+      content?: string;
+      location?: string | null;
+      imageUrl?: string | null;
+      previousImageUrl?: string | null;
+    }) => {
+      if (!currentUserId) throw new Error("로그인이 필요해요.");
+      const update: Record<string, unknown> = {};
+      if (input.content !== undefined) update.content = input.content;
+      if (input.location !== undefined) update.location = input.location;
+      if (input.imageUrl !== undefined) update.image_url = input.imageUrl;
+
+      const { error } = await supabase
+        .from("feeds")
+        .update(update)
+        .eq("id", input.feedId)
+        .eq("author_id", currentUserId);
+      if (error) throw new Error(error.message || JSON.stringify(error));
+
+      // If imageUrl is being changed (and the old one was in our bucket),
+      // remove the old file so we don't accumulate orphans.
+      if (
+        input.imageUrl !== undefined &&
+        input.previousImageUrl &&
+        input.previousImageUrl !== input.imageUrl
+      ) {
+        const oldPath = feedMediaPathFromUrl(input.previousImageUrl);
+        if (oldPath) {
+          await supabase.storage.from("feed-media").remove([oldPath]);
+          // Don't throw on storage cleanup failure — DB row is already updated.
+        }
+      }
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["feeds"] });
+      qc.invalidateQueries({ queryKey: ["feed", variables.feedId] });
+    },
+  });
+}
+
+export function useDeleteFeed(currentUserId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      feedId: string;
+      imageUrl?: string | null;
+    }) => {
+      if (!currentUserId) throw new Error("로그인이 필요해요.");
+
+      const { error } = await supabase
+        .from("feeds")
+        .delete()
+        .eq("id", input.feedId)
+        .eq("author_id", currentUserId);
+      if (error) throw new Error(error.message || JSON.stringify(error));
+
+      if (input.imageUrl) {
+        const path = feedMediaPathFromUrl(input.imageUrl);
+        if (path) {
+          await supabase.storage.from("feed-media").remove([path]);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });

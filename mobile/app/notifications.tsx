@@ -70,7 +70,7 @@ export default function NotificationsScreen() {
         ) : error ? (
           <View className="bg-red-50 border border-red-100 p-4 rounded-2xl">
             <Text className="text-[10px] font-bold text-red-700">
-              알림을 불러오지 못했습니다
+              알림을 불러오지 못했어요
             </Text>
             <Text className="text-[10px] text-red-600 mt-1">
               {error instanceof Error ? error.message : "알 수 없는 오류"}
@@ -79,7 +79,7 @@ export default function NotificationsScreen() {
         ) : notifications.length === 0 ? (
           <View className="bg-white p-8 rounded-3xl items-center">
             <Text className="text-gray-400 text-xs text-center">
-              아직 도착한 알림이 없습니다.
+              아직 도착한 알림이 없어요.
             </Text>
           </View>
         ) : (
@@ -161,26 +161,26 @@ function describe(n: Notification): {
     case "like":
       return {
         icon: <Heart size={11} color="#EF4444" fill="#EF4444" />,
-        message: `${name}님이 회원님의 글을 좋아합니다${
+        message: `${name}님이 회원님의 글을 좋아해요${
           n.feedSnippet ? `: "${n.feedSnippet}"` : ""
         }`,
       };
     case "comment":
       return {
         icon: <MessageCircle size={11} color="#2563EB" />,
-        message: `${name}님이 댓글을 남겼습니다${
+        message: `${name}님이 댓글을 남겼어요${
           n.commentContent ? `: ${n.commentContent}` : ""
         }`,
       };
     case "follow":
       return {
         icon: <UserPlus size={11} color="#059669" />,
-        message: `${name}님이 회원님을 팔로우합니다`,
+        message: `${name}님이 회원님을 팔로우해요`,
       };
     case "team_join_request":
       return {
         icon: <Users size={11} color="#D97706" />,
-        message: `${name}님이 팀 "${n.teamName ?? ""}"에 가입을 요청했습니다`,
+        message: `${name}님이 팀 "${n.teamName ?? ""}"에 가입을 요청했어요`,
       };
   }
 }

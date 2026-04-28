@@ -11,6 +11,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { queryClient } from "@/src/lib/query-client";
 import { useAuthStore } from "@/src/store/auth-store";
 import { useProfile } from "@/src/hooks/use-profile";
+import { AlertHost } from "@/src/components/AlertHost";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -22,6 +23,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <RootGuard />
+        <AlertHost />
         <StatusBar style="auto" />
       </ThemeProvider>
     </QueryClientProvider>
@@ -67,6 +69,7 @@ function RootGuard() {
       <Stack.Screen name="log/[id]" />
       <Stack.Screen name="feed/new" options={{ presentation: "modal" }} />
       <Stack.Screen name="feed/[id]" />
+      <Stack.Screen name="feed/edit/[id]" options={{ presentation: "modal" }} />
       <Stack.Screen name="schedule/new" options={{ presentation: "modal" }} />
       <Stack.Screen name="profile/[id]" />
       <Stack.Screen name="profile/edit" options={{ presentation: "modal" }} />

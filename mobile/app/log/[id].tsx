@@ -7,7 +7,6 @@ import {
   Pressable,
   Modal,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -30,6 +29,8 @@ import { useDive } from "@/src/hooks/use-dives";
 import { useCreateFeed } from "@/src/hooks/use-feeds";
 import { useAuthStore } from "@/src/store/auth-store";
 import { StatBox, DiveMediaGallery } from "@/src/components";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 import { formatDate, formatTime } from "@/src/lib/format";
 
 export default function LogDetailScreen() {
@@ -57,14 +58,14 @@ export default function LogDetailScreen() {
       });
       setShareOpen(false);
       setCaption("");
-      Alert.alert("공유됨", "피드에 다이브 로그를 게시했습니다.", [
+      showAlert("공유됨", "피드에 다이브 로그를 게시했어요.", [
         { text: "확인", onPress: () => router.push("/(tabs)/feed") },
         { text: "닫기" },
       ]);
     } catch (err: unknown) {
-      Alert.alert(
+      showAlert(
         "공유 실패",
-        err instanceof Error ? err.message : "알 수 없는 오류",
+        friendlyError(err),
       );
     } finally {
       setSharing(false);
@@ -82,7 +83,7 @@ export default function LogDetailScreen() {
   if (!dive) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50 p-6">
-        <Text className="text-gray-400 mb-4">로그를 찾을 수 없습니다.</Text>
+        <Text className="text-gray-400 mb-4">로그를 찾을 수 없어요.</Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-gray-900 px-5 py-3 rounded-2xl"
@@ -211,7 +212,7 @@ export default function LogDetailScreen() {
               Dive Diary
             </Text>
             <Text className="text-sm text-gray-700 leading-5">
-              {dive.memo?.trim() || "메모가 없습니다."}
+              {dive.memo?.trim() || "메모가 없어요."}
             </Text>
           </View>
 

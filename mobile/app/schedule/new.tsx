@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,6 +13,8 @@ import { useRouter } from "expo-router";
 import { useAuthStore } from "@/src/store/auth-store";
 import { useCreateDiveSchedule } from "@/src/hooks/use-dive-schedules";
 import { KeyboardSafeScroll, DateField, dateToYmd } from "@/src/components";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 
 export default function NewScheduleScreen() {
   const router = useRouter();
@@ -29,15 +30,15 @@ export default function NewScheduleScreen() {
   const onSubmit = async () => {
     const t = title.trim();
     if (t.length < 2) {
-      Alert.alert("제목", "최소 2자 이상이어야 합니다.");
+      showAlert("제목", "최소 2자 이상이어야 해요.");
       return;
     }
     if (!startDate || !endDate) {
-      Alert.alert("날짜", "시작일과 종료일을 모두 선택해주세요.");
+      showAlert("날짜", "시작일과 종료일을 모두 선택해주세요.");
       return;
     }
     if (endDate < startDate) {
-      Alert.alert("날짜", "종료일이 시작일보다 빠를 수 없습니다.");
+      showAlert("날짜", "종료일이 시작일보다 빠를 수 없어요.");
       return;
     }
 
@@ -51,8 +52,7 @@ export default function NewScheduleScreen() {
       });
       router.back();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "알 수 없는 오류";
-      Alert.alert("저장 실패", message);
+      showAlert("저장 실패", friendlyError(err));
     } finally {
       setSubmitting(false);
     }

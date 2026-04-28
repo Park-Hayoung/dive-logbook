@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
   TextInput,
   Pressable,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Shuffle } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/services/supabase";
 import { KeyboardSafeScroll } from "@/src/components";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
+import { randomNickname } from "@/src/lib/nickname-generator";
 
 const CERTIFICATIONS = [
   "Open Water",
@@ -21,7 +24,21 @@ const CERTIFICATIONS = [
   "Instructor",
 ] as const;
 
-const ORGS = ["PADI", "SSI", "SDI", "NAUI", "기타"] as const;
+// Major recreational + technical diving organizations.
+// PADI/SSI lead globally; KUDA is the local Korean federation.
+const ORGS = [
+  "PADI",
+  "SSI",
+  "SDI",
+  "TDI",
+  "NAUI",
+  "CMAS",
+  "BSAC",
+  "RAID",
+  "IANTD",
+  "KUDA",
+  "기타",
+] as const;
 
 type Cert = (typeof CERTIFICATIONS)[number];
 type Org = (typeof ORGS)[number];
@@ -36,19 +53,27 @@ export default function OnboardingScreen() {
   const [totalDives, setTotalDives] = useState("0");
   const [submitting, setSubmitting] = useState(false);
 
+  // Pre-fill a fun nickname suggestion on first mount. The user can keep it,
+  // shuffle for a new one, or type their own.
+  useEffect(() => {
+    setNickname(randomNickname());
+  }, []);
+
+  const onShuffleNickname = () => setNickname(randomNickname());
+
   const onSubmit = async () => {
     if (!user) {
-      Alert.alert("오류", "로그인 세션이 없습니다.");
+      showAlert("오류", "로그인 세션이 없어요.");
       return;
     }
     const trimmed = nickname.trim();
     if (trimmed.length < 2) {
-      Alert.alert("닉네임", "최소 2자 이상이어야 합니다.");
+      showAlert("닉네임", "최소 2자 이상이어야 해요.");
       return;
     }
     const dives = Number.parseInt(totalDives, 10);
     if (Number.isNaN(dives) || dives < 0) {
-      Alert.alert("누적 다이브", "0 이상의 숫자를 입력해주세요.");
+      showAlert("누적 다이브", "0 이상의 숫자를 입력해주세요.");
       return;
     }
 
@@ -64,8 +89,7 @@ export default function OnboardingScreen() {
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "알 수 없는 오류";
-      Alert.alert("프로필 생성 실패", message);
+      showAlert("프로필 생성 실패", friendlyError(err));
     } finally {
       setSubmitting(false);
     }
@@ -76,21 +100,37 @@ export default function OnboardingScreen() {
       <KeyboardSafeScroll contentContainerStyle={{ padding: 24, gap: 16 }}>
         <Text className="text-2xl font-black mb-2">프로필 설정</Text>
         <Text className="text-sm text-gray-500 mb-4">
-          로그북 시작을 위한 기본 정보입니다.
+          로그북 시작을 위한 기본 정보예요.
         </Text>
 
-        <View className="gap-1">
-          <Text className="text-xs font-bold text-gray-700">닉네임</Text>
+        <View className="gap-1.5">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xs font-bold text-gray-700">닉네임</Text>
+            <Pressable
+              onPress={onShuffleNickname}
+              disabled={submitting}
+              hitSlop={6}
+              className="flex-row items-center gap-1 bg-brand-50 px-2.5 py-1 rounded-full"
+            >
+              <Shuffle size={11} color="#2563EB" />
+              <Text className="text-[10px] font-black text-brand-700">
+                자동 생성
+              </Text>
+            </Pressable>
+          </View>
           <TextInput
             value={nickname}
             onChangeText={setNickname}
-            placeholder="예: 산호랑이"
+            placeholder="예: 푸른돌고래"
             placeholderTextColor="#9CA3AF"
             autoCapitalize="none"
             autoCorrect={false}
             editable={!submitting}
             className="border border-gray-200 rounded-2xl p-4 text-base text-gray-900"
           />
+          <Text className="text-[10px] text-gray-400 mt-0.5">
+            마음에 드는 닉네임이 나올 때까지 자동 생성을 눌러보세요.
+          </Text>
         </View>
 
         <View className="gap-1">

@@ -65,7 +65,7 @@ export function useAddFeedComment(
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (content: string) => {
-      if (!feedId || !currentUserId) throw new Error("로그인이 필요합니다.");
+      if (!feedId || !currentUserId) throw new Error("로그인이 필요해요.");
       const { error } = await supabase.from("feed_comments").insert({
         feed_id: feedId,
         author_id: currentUserId,

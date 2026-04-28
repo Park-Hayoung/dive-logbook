@@ -17,8 +17,10 @@ import {
 import {
   streamToFile,
   deleteFile,
-  publicUrl,
-  diveMediaPath,
+  publicMediaUrl,
+  mediaPath,
+  isMediaKind,
+  type MediaKind,
 } from "./storage.js";
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -52,8 +54,13 @@ app.get("/health", (c) => c.json({ ok: true }));
 // ---------------------------------------------------------------------------
 // 1) Mobile app requests an upload URL.
 //    Auth: Supabase JWT in Authorization: Bearer ...
-//    Body: { diveId, originalFilename, contentType }
-//    Returns: { uploadUrl, expiresAt, finalUrl }
+//    Body: { kind, diveId?, teamId?, originalFilename, contentType }
+//      kind ∈ "dives" | "avatars" | "feeds" | "teams"  (default: "dives")
+//      - dives:   diveId required; scope is the dive
+//      - teams:   teamId required; scope is the team
+//      - avatars: scope is the authenticated user (auto)
+//      - feeds:   scope is the authenticated user (auto)
+//    Returns: { uploadUrl, finalUrl, filename, expiresAt }
 // ---------------------------------------------------------------------------
 app.post("/upload-token", async (c) => {
   const auth = c.req.header("authorization");
@@ -68,23 +75,47 @@ app.post("/upload-token", async (c) => {
   }
 
   const body = await c.req.json().catch(() => null);
-  if (!body?.diveId || !body?.originalFilename) {
-    return c.json({ error: "diveId and originalFilename required" }, 400);
+  if (!body?.originalFilename) {
+    return c.json({ error: "originalFilename required" }, 400);
+  }
+
+  const rawKind = (body.kind ?? "dives") as string;
+  if (!isMediaKind(rawKind)) {
+    return c.json({ error: `Invalid kind: ${rawKind}` }, 400);
+  }
+  const kind: MediaKind = rawKind;
+
+  let scopeId: string;
+  if (kind === "dives") {
+    if (!body.diveId) return c.json({ error: "diveId required for dives" }, 400);
+    scopeId = String(body.diveId);
+  } else if (kind === "teams") {
+    if (!body.teamId) return c.json({ error: "teamId required for teams" }, 400);
+    scopeId = String(body.teamId);
+  } else {
+    // avatars / feeds: always scoped to the authenticated user.
+    scopeId = claims.sub;
   }
 
   // Generate server-side filename: <uuid>.<ext> — never trust client name verbatim
   const ext = extname(body.originalFilename).toLowerCase().slice(0, 10) || "";
   const filename = `${randomUUID()}${ext}`;
+  const scopePath = `${kind}/${scopeId}`;
   const expiresAt = Date.now() + config.uploadUrlTtlSeconds * 1000;
-  const signature = signUploadPayload(claims.sub, body.diveId, filename, expiresAt);
+  const signature = signUploadPayload(
+    claims.sub,
+    scopePath,
+    filename,
+    expiresAt,
+  );
 
   const uploadUrl =
-    `${config.publicBaseUrl}/upload/${claims.sub}/${body.diveId}/${filename}` +
+    `${config.publicBaseUrl}/upload/${claims.sub}/${kind}/${encodeURIComponent(scopeId)}/${encodeURIComponent(filename)}` +
     `?exp=${expiresAt}&sig=${signature}`;
 
   return c.json({
     uploadUrl,
-    finalUrl: publicUrl(body.diveId, filename),
+    finalUrl: publicMediaUrl(kind, scopeId, filename),
     filename,
     expiresAt,
   });
@@ -92,13 +123,19 @@ app.post("/upload-token", async (c) => {
 
 // ---------------------------------------------------------------------------
 // 2) Client streams the file with HTTP PUT to the signed URL.
+//    Path: /upload/:userId/:kind/:scopeId/:filename
 // ---------------------------------------------------------------------------
-app.put("/upload/:userId/:diveId/:filename", async (c) => {
-  const { userId, diveId, filename } = c.req.param();
+app.put("/upload/:userId/:kind/:scopeId/:filename", async (c) => {
+  const { userId, kind, scopeId, filename } = c.req.param();
+  if (!isMediaKind(kind)) {
+    return c.json({ error: `Invalid kind: ${kind}` }, 400);
+  }
   const exp = Number(c.req.query("exp"));
   const sig = c.req.query("sig");
   if (!exp || !sig) return c.json({ error: "Missing exp/sig" }, 400);
-  if (!verifyUploadSignature(sig, userId, diveId, filename, exp)) {
+
+  const scopePath = `${kind}/${scopeId}`;
+  if (!verifyUploadSignature(sig, userId, scopePath, filename, exp)) {
     return c.json({ error: "Invalid or expired signature" }, 403);
   }
 
@@ -106,31 +143,45 @@ app.put("/upload/:userId/:diveId/:filename", async (c) => {
   if (!body) return c.json({ error: "Empty body" }, 400);
 
   // Convert WHATWG ReadableStream to Node Readable
-  const { Readable } = await import("node:stream");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nodeStream = Readable.fromWeb(body as any);
 
   try {
-    const { sizeBytes } = await streamToFile(nodeStream, diveId, filename);
+    const { sizeBytes } = await streamToFile(
+      nodeStream,
+      kind,
+      scopeId,
+      filename,
+    );
     return c.json({
       ok: true,
-      url: publicUrl(diveId, filename),
+      url: publicMediaUrl(kind, scopeId, filename),
       sizeBytes,
     });
   } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[upload] streamToFile failed:", {
+      kind,
+      scopeId,
+      filename,
+      error: e instanceof Error ? { message: e.message, stack: e.stack } : e,
+    });
     return c.json({ error: "Upload failed", detail: String(e) }, 500);
   }
 });
 
 // ---------------------------------------------------------------------------
 // 3) Public read — Cloudflare CDN caches these.
-//    Manual streaming handler (Hono's serveStatic + absolute root + rewrite is
-//    fragile across versions; this is portable and explicit).
 // ---------------------------------------------------------------------------
-app.get("/file/dives/:diveId/:filename", async (c) => {
-  const { diveId, filename } = c.req.param();
+app.get("/file/:kind/:scopeId/:filename", async (c) => {
+  const { kind, scopeId, filename } = c.req.param();
+  if (!isMediaKind(kind)) {
+    return c.json({ error: `Invalid kind: ${kind}` }, 400);
+  }
+
   let absPath: string;
   try {
-    absPath = diveMediaPath(diveId, filename);
+    absPath = mediaPath(kind, scopeId, filename);
   } catch {
     return c.json({ error: "Invalid path" }, 400);
   }
@@ -156,8 +207,10 @@ app.get("/file/dives/:diveId/:filename", async (c) => {
 
 // ---------------------------------------------------------------------------
 // 4) Delete (auth required, owner verified via JWT)
+//    Note: callers should DELETE the related DB row first; this endpoint just
+//    removes the file from disk.
 // ---------------------------------------------------------------------------
-app.delete("/file/dives/:diveId/:filename", async (c) => {
+app.delete("/file/:kind/:scopeId/:filename", async (c) => {
   const auth = c.req.header("authorization");
   if (!auth?.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
   try {
@@ -165,13 +218,13 @@ app.delete("/file/dives/:diveId/:filename", async (c) => {
   } catch {
     return c.json({ error: "Invalid JWT" }, 401);
   }
-  const { diveId, filename } = c.req.param();
-  // Verify the file belongs to a dive owned by this user via Supabase RLS check
-  // is delegated to the mobile client (it must DELETE the dive_media row first).
-  // Here we just remove the file.
-  diveMediaPath(diveId, filename); // throws if path traversal
+  const { kind, scopeId, filename } = c.req.param();
+  if (!isMediaKind(kind)) {
+    return c.json({ error: `Invalid kind: ${kind}` }, 400);
+  }
   try {
-    await deleteFile(diveId, filename);
+    mediaPath(kind, scopeId, filename); // path traversal check
+    await deleteFile(kind, scopeId, filename);
     return c.json({ ok: true });
   } catch (e) {
     return c.json({ error: "Delete failed", detail: String(e) }, 500);

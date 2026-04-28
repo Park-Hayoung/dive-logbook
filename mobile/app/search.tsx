@@ -76,7 +76,7 @@ export default function SearchScreen() {
         ) : !profiles || profiles.length === 0 ? (
           <View className="bg-white p-8 rounded-3xl items-center">
             <Text className="text-gray-400 text-xs">
-              검색 결과가 없습니다.
+              검색 결과가 없어요.
             </Text>
           </View>
         ) : (

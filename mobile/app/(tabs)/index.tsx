@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
@@ -20,6 +20,7 @@ import {
   useDeleteDiveSchedule,
 } from "@/src/hooks/use-dive-schedules";
 import { useRecentNotificationCount } from "@/src/hooks/use-notifications";
+import { showAlert } from "@/src/lib/alert";
 import { LogCard, StatBox } from "@/src/components";
 
 const RECENT_LIMIT = 2;
@@ -95,7 +96,7 @@ export default function HomeScreen() {
   const totalDives = (profile?.total_dives_at_signup ?? 0) + summary.total;
 
   const onDeleteSchedule = (id: string, title: string) => {
-    Alert.alert("일정 삭제", `"${title}"을(를) 삭제하시겠어요?`, [
+    showAlert("일정 삭제", `"${title}"을(를) 삭제하시겠어요?`, [
       { text: "취소" },
       {
         text: "삭제",
@@ -200,7 +201,7 @@ export default function HomeScreen() {
         {schedulesError ? (
           <View className="bg-red-50 border border-red-100 p-4 rounded-2xl mb-6">
             <Text className="text-[10px] font-bold text-red-700">
-              일정을 불러오지 못했습니다
+              일정을 불러오지 못했어요
             </Text>
             <Text className="text-[10px] text-red-600 mt-1">
               {extractErrorMessage(schedulesError)}

@@ -1,14 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   ActivityIndicator,
   Pressable,
-  Alert,
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ChevronLeft,
@@ -19,6 +19,7 @@ import {
   Check,
   X,
   Hourglass,
+  Camera,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -29,7 +30,19 @@ import {
   useLeaveTeam,
   useApproveTeamMember,
   useRejectTeamMember,
+  useUpdateTeam,
 } from "@/src/hooks/use-teams";
+import { useUploadTeamImage } from "@/src/hooks/use-upload-team-image";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
+
+const guessContentType = (uri: string): string => {
+  const ext = uri.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "png") return "image/png";
+  if (ext === "heic") return "image/heic";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
+};
 
 export default function TeamDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +55,9 @@ export default function TeamDetailScreen() {
   const leave = useLeaveTeam(userId);
   const approve = useApproveTeamMember();
   const reject = useRejectTeamMember();
+  const updateTeam = useUpdateTeam();
+  const uploadImage = useUploadTeamImage(userId);
+  const [imageBusy, setImageBusy] = useState(false);
 
   const myMembership = useMemo(
     () => members.find((m) => m.userId === userId),
@@ -60,18 +76,18 @@ export default function TeamDetailScreen() {
     if (!id) return;
     try {
       await requestJoin.mutateAsync(id);
-      Alert.alert("신청 완료", "리더 승인 후 팀에 참여됩니다.");
+      showAlert("신청 완료", "리더 승인 후 팀에 참여할 수 있어요.");
     } catch (err: unknown) {
-      Alert.alert(
+      showAlert(
         "신청 실패",
-        err instanceof Error ? err.message : "알 수 없는 오류",
+        friendlyError(err),
       );
     }
   };
 
   const onLeave = () => {
     if (!id) return;
-    Alert.alert("팀 떠나기", "정말로 이 팀에서 나가시겠어요?", [
+    showAlert("팀 떠나기", "정말로 이 팀에서 나가시겠어요?", [
       { text: "취소" },
       {
         text: "나가기",
@@ -81,9 +97,9 @@ export default function TeamDetailScreen() {
             await leave.mutateAsync(id);
             router.back();
           } catch (err: unknown) {
-            Alert.alert(
+            showAlert(
               "처리 실패",
-              err instanceof Error ? err.message : "알 수 없는 오류",
+              friendlyError(err),
             );
           }
         },
@@ -100,6 +116,41 @@ export default function TeamDetailScreen() {
     reject.mutate({ teamId: id, userId: memberUserId });
   };
 
+  const onChangeTeamImage = async () => {
+    if (!id) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showAlert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (picked.canceled) return;
+    const asset = picked.assets[0];
+    if (!asset) return;
+
+    setImageBusy(true);
+    try {
+      const url = await uploadImage.mutateAsync({
+        teamId: id,
+        localUri: asset.uri,
+        contentType: asset.mimeType ?? guessContentType(asset.uri),
+      });
+      await updateTeam.mutateAsync({ teamId: id, imageUrl: url });
+    } catch (err: unknown) {
+      showAlert(
+        "팀 이미지 변경 실패",
+        friendlyError(err),
+      );
+    } finally {
+      setImageBusy(false);
+    }
+  };
+
   if (teamLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
@@ -111,7 +162,7 @@ export default function TeamDetailScreen() {
   if (!team) {
     return (
       <SafeAreaView edges={["top"]} className="flex-1 items-center justify-center bg-gray-50 p-6">
-        <Text className="text-gray-400 mb-4">팀을 찾을 수 없습니다.</Text>
+        <Text className="text-gray-400 mb-4">팀을 찾을 수 없어요.</Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-gray-900 px-5 py-3 rounded-2xl"
@@ -139,16 +190,56 @@ export default function TeamDetailScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
       >
         <View className="bg-white p-6 rounded-3xl items-center mb-4">
-          <View className="w-20 h-20 rounded-3xl bg-brand-50 items-center justify-center mb-3">
-            {team.imageUrl ? (
-              <Image
-                source={{ uri: team.imageUrl }}
-                className="w-20 h-20 rounded-3xl"
-              />
-            ) : (
-              <Users size={32} color="#2563EB" />
-            )}
-          </View>
+          <Pressable
+            onPress={isLeader ? onChangeTeamImage : undefined}
+            disabled={!isLeader || imageBusy}
+            style={{ width: 80, height: 80, marginBottom: 12 }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 24,
+                backgroundColor: "#EFF6FF",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+            >
+              {team.imageUrl ? (
+                <Image
+                  source={{ uri: team.imageUrl }}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Users size={32} color="#2563EB" />
+              )}
+            </View>
+            {isLeader ? (
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: "#2563EB",
+                  borderWidth: 2,
+                  borderColor: "#FFFFFF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {imageBusy ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Camera size={12} color="#fff" />
+                )}
+              </View>
+            ) : null}
+          </Pressable>
           <Text className="text-2xl font-black text-gray-900 mb-1">
             {team.name}
           </Text>

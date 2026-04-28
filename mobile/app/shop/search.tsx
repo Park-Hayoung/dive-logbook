@@ -109,7 +109,7 @@ export default function ShopSearchScreen() {
         ) : !shops || shops.length === 0 ? (
           <View className="bg-white p-8 rounded-3xl items-center">
             <Text className="text-gray-400 text-xs text-center">
-              조건에 맞는 다이브 샵이 없습니다.
+              조건에 맞는 다이브 샵이 없어요.
               {"\n"}필터를 바꿔보거나 초기화해보세요.
             </Text>
           </View>

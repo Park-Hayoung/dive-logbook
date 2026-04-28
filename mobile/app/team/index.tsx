@@ -102,8 +102,8 @@ export default function TeamListScreen() {
           <View className="bg-white p-8 rounded-3xl items-center">
             <Text className="text-gray-400 text-xs text-center">
               {search.trim()
-                ? "검색 결과가 없습니다."
-                : "아직 등록된 팀이 없습니다.\n첫 팀을 만들어보세요!"}
+                ? "검색 결과가 없어요."
+                : "아직 등록된 팀이 없어요.\n첫 팀을 만들어보세요!"}
             </Text>
           </View>
         ) : (

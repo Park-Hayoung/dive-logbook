@@ -13,7 +13,7 @@ export async function pickAndUploadImage(diveId: string): Promise<UploadResult |
   const asset = result.assets[0];
 
   return mediaStorage.upload({
-    diveId,
+    scope: { type: "dive", diveId },
     localUri: asset.uri,
     originalFilename: asset.fileName ?? "image.jpg",
     contentType: asset.mimeType ?? "image/jpeg",
@@ -36,14 +36,14 @@ export async function pickAndUploadVideo(
 
   const [video, thumbnail] = await Promise.all([
     mediaStorage.upload({
-      diveId,
+      scope: { type: "dive", diveId },
       localUri: compressed.uri,
       originalFilename: asset.fileName ?? "video.mp4",
       contentType: "video/mp4",
       kind: "video",
     }),
     mediaStorage.upload({
-      diveId,
+      scope: { type: "dive", diveId },
       localUri: compressed.thumbnailUri,
       originalFilename: "thumbnail.jpg",
       contentType: "image/jpeg",

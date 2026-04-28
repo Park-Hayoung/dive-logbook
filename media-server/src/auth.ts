@@ -57,14 +57,15 @@ export async function verifySupabaseJwt(token: string): Promise<SupabaseClaims> 
 }
 
 // Sign a short-lived upload payload. Returns base64url(HMAC).
-// The signed string is "<userId>|<diveId>|<filename>|<expiresAt>".
+// The signed string is "<userId>|<scopePath>|<filename>|<expiresAt>"
+// where scopePath is e.g. "dives/<diveId>" or "avatars/<userId>".
 export function signUploadPayload(
   userId: string,
-  diveId: string,
+  scopePath: string,
   filename: string,
   expiresAt: number,
 ): string {
-  const data = `${userId}|${diveId}|${filename}|${expiresAt}`;
+  const data = `${userId}|${scopePath}|${filename}|${expiresAt}`;
   const h = createHmac("sha256", config.uploadHmacSecret);
   h.update(data);
   return h.digest("base64url");
@@ -73,12 +74,12 @@ export function signUploadPayload(
 export function verifyUploadSignature(
   signature: string,
   userId: string,
-  diveId: string,
+  scopePath: string,
   filename: string,
   expiresAt: number,
 ): boolean {
   if (Date.now() > expiresAt) return false;
-  const expected = signUploadPayload(userId, diveId, filename, expiresAt);
+  const expected = signUploadPayload(userId, scopePath, filename, expiresAt);
   const a = Buffer.from(signature);
   const b = Buffer.from(expected);
   if (a.length !== b.length) return false;

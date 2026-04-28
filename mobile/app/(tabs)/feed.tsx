@@ -66,7 +66,7 @@ export default function FeedScreen() {
         ) : !feeds || feeds.length === 0 ? (
           <View className="bg-white p-8 rounded-3xl items-center">
             <Text className="text-gray-400 text-xs text-center">
-              아직 피드가 없습니다.{"\n"}첫 글을 남겨보세요!
+              아직 피드가 없어요.{"\n"}첫 글을 남겨보세요!
             </Text>
           </View>
         ) : (

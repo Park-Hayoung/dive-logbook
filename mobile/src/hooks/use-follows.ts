@@ -55,9 +55,9 @@ export function useToggleFollow(currentUserId: string | undefined) {
       targetUserId: string;
       currentlyFollowing: boolean;
     }) => {
-      if (!currentUserId) throw new Error("로그인이 필요합니다.");
+      if (!currentUserId) throw new Error("로그인이 필요해요.");
       if (currentUserId === input.targetUserId) {
-        throw new Error("본인을 팔로우할 수 없습니다.");
+        throw new Error("본인을 팔로우할 수 없어요.");
       }
       if (input.currentlyFollowing) {
         const { error } = await supabase

@@ -4,42 +4,32 @@ import {
   Text,
   Pressable,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useAuthStore } from "@/src/store/auth-store";
 import { KeyboardSafeScroll } from "@/src/components";
-
-type Mode = "signIn" | "signUp";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 
 export default function LoginScreen() {
+  const router = useRouter();
   const signIn = useAuthStore((s) => s.signIn);
-  const signUp = useAuthStore((s) => s.signUp);
 
-  const [mode, setMode] = useState<Mode>("signIn");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async () => {
     if (!email.trim() || !password) {
-      Alert.alert("입력 확인", "이메일과 비밀번호를 입력해주세요.");
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert("비밀번호", "최소 6자 이상이어야 합니다.");
+      showAlert("입력 확인", "이메일과 비밀번호를 입력해주세요.");
       return;
     }
     setSubmitting(true);
     try {
-      if (mode === "signUp") {
-        await signUp(email.trim(), password);
-      } else {
-        await signIn(email.trim(), password);
-      }
+      await signIn(email.trim(), password);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "알 수 없는 오류";
-      Alert.alert(mode === "signUp" ? "가입 실패" : "로그인 실패", message);
+      showAlert("로그인 실패", friendlyError(err));
     } finally {
       setSubmitting(false);
     }
@@ -72,7 +62,7 @@ export default function LoginScreen() {
           <TextInput
             value={password}
             onChangeText={setPassword}
-            placeholder="비밀번호 (6자 이상)"
+            placeholder="비밀번호"
             placeholderTextColor="#9CA3AF"
             secureTextEntry
             autoCapitalize="none"
@@ -88,21 +78,18 @@ export default function LoginScreen() {
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="text-white font-black">
-                {mode === "signUp" ? "가입하기" : "로그인"}
-              </Text>
+              <Text className="text-white font-black">로그인</Text>
             )}
           </Pressable>
 
           <Pressable
-            onPress={() => setMode(mode === "signUp" ? "signIn" : "signUp")}
+            onPress={() => router.push("/(auth)/signup" as never)}
             disabled={submitting}
-            className="items-center mt-2"
+            className="items-center mt-2 py-2"
           >
             <Text className="text-xs text-gray-500">
-              {mode === "signUp"
-                ? "이미 계정이 있나요? 로그인"
-                : "계정이 없나요? 가입하기"}
+              계정이 없나요?{" "}
+              <Text className="text-brand-700 font-black">가입하기</Text>
             </Text>
           </Pressable>
         </View>

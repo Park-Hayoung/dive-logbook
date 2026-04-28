@@ -7,7 +7,6 @@ import {
   Pressable,
   TextInput,
   Image,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -20,14 +19,22 @@ import {
   Send,
   MapPin,
   Anchor,
+  Pencil,
+  Trash2,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
-import { useFeed, useToggleFeedLike } from "@/src/hooks/use-feeds";
+import {
+  useFeed,
+  useToggleFeedLike,
+  useDeleteFeed,
+} from "@/src/hooks/use-feeds";
 import {
   useFeedComments,
   useAddFeedComment,
 } from "@/src/hooks/use-feed-comments";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 
 const formatRelative = (iso: string): string => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -49,6 +56,7 @@ export default function FeedDetailScreen() {
     useFeedComments(id);
   const toggleLike = useToggleFeedLike(userId);
   const addComment = useAddFeedComment(id, userId);
+  const deleteFeed = useDeleteFeed(userId);
 
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
@@ -61,13 +69,43 @@ export default function FeedDetailScreen() {
       await addComment.mutateAsync(trimmed);
       setDraft("");
     } catch (err: unknown) {
-      Alert.alert(
+      showAlert(
         "댓글 등록 실패",
-        err instanceof Error ? err.message : "알 수 없는 오류",
+        friendlyError(err),
       );
     } finally {
       setPosting(false);
     }
+  };
+
+  const onDelete = () => {
+    if (!feed) return;
+    showAlert("피드 삭제", "이 글을 정말 삭제하시겠어요? 댓글과 사진도 함께 삭제돼요.", [
+      { text: "취소" },
+      {
+        text: "삭제",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteFeed.mutateAsync({
+              feedId: feed.id,
+              imageUrl: feed.imageUrl,
+            });
+            router.back();
+          } catch (err: unknown) {
+            showAlert(
+              "삭제 실패",
+              friendlyError(err),
+            );
+          }
+        },
+      },
+    ]);
+  };
+
+  const onEdit = () => {
+    if (!feed) return;
+    router.push({ pathname: "/feed/edit/[id]", params: { id: feed.id } });
   };
 
   const onToggleLike = async () => {
@@ -78,9 +116,9 @@ export default function FeedDetailScreen() {
         currentlyLiked: feed.myLiked,
       });
     } catch (err: unknown) {
-      Alert.alert(
+      showAlert(
         "처리 실패",
-        err instanceof Error ? err.message : "알 수 없는 오류",
+        friendlyError(err),
       );
     }
   };
@@ -96,7 +134,7 @@ export default function FeedDetailScreen() {
   if (!feed) {
     return (
       <SafeAreaView edges={["top"]} className="flex-1 items-center justify-center bg-gray-50 p-6">
-        <Text className="text-gray-400 mb-4">피드를 찾을 수 없습니다.</Text>
+        <Text className="text-gray-400 mb-4">피드를 찾을 수 없어요.</Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-gray-900 px-5 py-3 rounded-2xl"
@@ -108,6 +146,7 @@ export default function FeedDetailScreen() {
   }
 
   const initial = feed.author?.nickname?.charAt(0) ?? "?";
+  const isAuthor = !!userId && userId === feed.authorId;
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50">
@@ -123,6 +162,24 @@ export default function FeedDetailScreen() {
             <ChevronLeft size={22} color="#374151" />
           </Pressable>
           <Text className="font-black text-base flex-1">피드</Text>
+          {isAuthor ? (
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                onPress={onEdit}
+                hitSlop={6}
+                className="w-9 h-9 bg-gray-100 rounded-full items-center justify-center"
+              >
+                <Pencil size={14} color="#374151" />
+              </Pressable>
+              <Pressable
+                onPress={onDelete}
+                hitSlop={6}
+                className="w-9 h-9 bg-red-50 rounded-full items-center justify-center"
+              >
+                <Trash2 size={14} color="#DC2626" />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         <ScrollView

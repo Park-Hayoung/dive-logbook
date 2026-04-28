@@ -25,7 +25,7 @@ export default function LogbookScreen() {
         {!isLoading && (!dives || dives.length === 0) && (
           <View className="bg-white p-8 rounded-3xl items-center">
             <Text className="text-gray-400 text-xs">
-              아직 기록된 다이브가 없습니다. + 버튼으로 첫 로그를 기록해보세요.
+              아직 기록된 다이브가 없어요. + 버튼으로 첫 로그를 기록해보세요.
             </Text>
           </View>
         )}

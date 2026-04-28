@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,10 +10,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { X, ImagePlus } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useAuthStore } from "@/src/store/auth-store";
-import { useCreateFeed } from "@/src/hooks/use-feeds";
+import { useFeed, useUpdateFeed } from "@/src/hooks/use-feeds";
 import { useUploadFeedImage } from "@/src/hooks/use-upload-feed-image";
 import { KeyboardSafeScroll } from "@/src/components";
 import { friendlyError } from "@/src/lib/error-messages";
@@ -27,17 +27,33 @@ const guessContentType = (uri: string): string => {
   return "image/jpeg";
 };
 
-export default function NewFeedScreen() {
+export default function EditFeedScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
-  const createFeed = useCreateFeed(userId);
+
+  const { data: feed, isLoading } = useFeed(id, userId);
+  const updateFeed = useUpdateFeed(userId);
   const uploadImage = useUploadFeedImage(userId);
 
   const [content, setContent] = useState("");
   const [location, setLocation] = useState("");
+  // Image state:
+  //  - imageLocalUri: a NEW image picked from gallery (uploads on save)
+  //  - keptImageUrl: the existing image kept as-is (no upload, no delete)
+  //  - if both null → user removed the image entirely
   const [imageLocalUri, setImageLocalUri] = useState<string | null>(null);
   const [imageContentType, setImageContentType] = useState<string | null>(null);
+  const [keptImageUrl, setKeptImageUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (feed) {
+      setContent(feed.content ?? "");
+      setLocation(feed.location ?? "");
+      setKeptImageUrl(feed.imageUrl);
+    }
+  }, [feed]);
 
   const onPickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -48,48 +64,62 @@ export default function NewFeedScreen() {
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.85,
-      allowsEditing: false,
     });
     if (picked.canceled) return;
     const asset = picked.assets[0];
     if (!asset) return;
     setImageLocalUri(asset.uri);
     setImageContentType(asset.mimeType ?? guessContentType(asset.uri));
+    setKeptImageUrl(null);
   };
 
   const onClearImage = () => {
     setImageLocalUri(null);
     setImageContentType(null);
+    setKeptImageUrl(null);
   };
 
   const onSubmit = async () => {
+    if (!feed) return;
     const trimmed = content.trim();
-    if (trimmed.length < 1 && !imageLocalUri) {
+    if (trimmed.length < 1 && !imageLocalUri && !keptImageUrl) {
       showAlert("내용", "글 내용 또는 이미지를 추가해주세요.");
       return;
     }
     setSubmitting(true);
     try {
-      let imageUrl: string | null = null;
+      let nextImageUrl: string | null = keptImageUrl;
       if (imageLocalUri && imageContentType) {
-        imageUrl = await uploadImage.mutateAsync({
+        nextImageUrl = await uploadImage.mutateAsync({
           localUri: imageLocalUri,
           contentType: imageContentType,
         });
       }
-      await createFeed.mutateAsync({
+
+      await updateFeed.mutateAsync({
+        feedId: feed.id,
         content: trimmed,
-        type: "normal",
         location: location.trim() || null,
-        imageUrl,
+        imageUrl: nextImageUrl,
+        previousImageUrl: feed.imageUrl,
       });
       router.back();
     } catch (err: unknown) {
-      showAlert("작성 실패", friendlyError(err));
+      showAlert("수정 실패", friendlyError(err));
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (isLoading || !feed) {
+    return (
+      <SafeAreaView edges={["top"]} className="flex-1 bg-white items-center justify-center">
+        <ActivityIndicator />
+      </SafeAreaView>
+    );
+  }
+
+  const previewUri = imageLocalUri ?? keptImageUrl;
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-white">
@@ -98,7 +128,7 @@ export default function NewFeedScreen() {
         bottomPadding={120}
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-2xl font-black text-gray-900">새 글 작성</Text>
+          <Text className="text-2xl font-black text-gray-900">글 수정</Text>
           <Pressable
             onPress={() => router.back()}
             className="p-2 bg-gray-100 rounded-full"
@@ -113,7 +143,7 @@ export default function NewFeedScreen() {
           <TextInput
             value={content}
             onChangeText={setContent}
-            placeholder="오늘의 다이브 인상, 본 어종, 추천 포인트 등"
+            placeholder="글 내용"
             placeholderTextColor="#9CA3AF"
             multiline
             numberOfLines={6}
@@ -125,10 +155,10 @@ export default function NewFeedScreen() {
 
         <View className="gap-1">
           <Text className="text-xs font-bold text-gray-700">사진 (선택)</Text>
-          {imageLocalUri ? (
+          {previewUri ? (
             <View className="relative">
               <Image
-                source={{ uri: imageLocalUri }}
+                source={{ uri: previewUri }}
                 className="w-full h-56 rounded-2xl"
                 resizeMode="cover"
               />
@@ -149,6 +179,21 @@ export default function NewFeedScreen() {
               >
                 <X size={16} color="#fff" />
               </Pressable>
+              <Pressable
+                onPress={onPickImage}
+                disabled={submitting}
+                style={{
+                  position: "absolute",
+                  bottom: 8,
+                  right: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  backgroundColor: "rgba(0,0,0,0.6)",
+                }}
+              >
+                <Text className="text-white text-[10px] font-black">교체</Text>
+              </Pressable>
             </View>
           ) : (
             <Pressable
@@ -157,9 +202,7 @@ export default function NewFeedScreen() {
               className="border border-dashed border-gray-300 rounded-2xl py-8 items-center justify-center gap-2"
             >
               <ImagePlus size={20} color="#6B7280" />
-              <Text className="text-xs font-bold text-gray-500">
-                사진 추가
-              </Text>
+              <Text className="text-xs font-bold text-gray-500">사진 추가</Text>
             </Pressable>
           )}
         </View>
@@ -184,13 +227,9 @@ export default function NewFeedScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white font-black">올리기</Text>
+            <Text className="text-white font-black">저장</Text>
           )}
         </Pressable>
-
-        <Text className="text-[10px] text-gray-400 text-center mt-2">
-          다이브 연동은 추후 추가
-        </Text>
       </KeyboardSafeScroll>
     </SafeAreaView>
   );

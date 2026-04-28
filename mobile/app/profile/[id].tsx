@@ -5,7 +5,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -25,6 +24,8 @@ import {
   useToggleFollow,
 } from "@/src/hooks/use-follows";
 import { Avatar } from "@/src/components";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 
 export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,9 +49,9 @@ export default function PublicProfileScreen() {
         currentlyFollowing: isFollowing,
       });
     } catch (err: unknown) {
-      Alert.alert(
+      showAlert(
         "처리 실패",
-        err instanceof Error ? err.message : "알 수 없는 오류",
+        friendlyError(err),
       );
     } finally {
       setBusy(false);
@@ -68,7 +69,7 @@ export default function PublicProfileScreen() {
   if (!profile) {
     return (
       <SafeAreaView edges={["top"]} className="flex-1 items-center justify-center bg-gray-50 p-6">
-        <Text className="text-gray-400 mb-4">프로필을 찾을 수 없습니다.</Text>
+        <Text className="text-gray-400 mb-4">프로필을 찾을 수 없어요.</Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-gray-900 px-5 py-3 rounded-2xl"

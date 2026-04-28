@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,6 +18,8 @@ import {
   useUploadAvatar,
 } from "@/src/hooks/use-update-profile";
 import { Avatar, KeyboardSafeScroll } from "@/src/components";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 
 const guessContentType = (uri: string): string => {
   const ext = uri.split(".").pop()?.toLowerCase() ?? "";
@@ -49,7 +50,7 @@ export default function ProfileEditScreen() {
   const onPickAvatar = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
+      showAlert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
       return;
     }
     const picked = await ImagePicker.launchImageLibraryAsync({
@@ -68,9 +69,9 @@ export default function ProfileEditScreen() {
         contentType: asset.mimeType ?? guessContentType(asset.uri),
       });
     } catch (err: unknown) {
-      Alert.alert(
+      showAlert(
         "프로필 사진 업로드 실패",
-        err instanceof Error ? err.message : "알 수 없는 오류",
+        friendlyError(err),
       );
     }
   };
@@ -78,7 +79,7 @@ export default function ProfileEditScreen() {
   const onSave = async () => {
     const trimmed = nickname.trim();
     if (trimmed.length < 2) {
-      Alert.alert("닉네임", "최소 2자 이상이어야 합니다.");
+      showAlert("닉네임", "최소 2자 이상이어야 해요.");
       return;
     }
     setSubmitting(true);
@@ -89,9 +90,9 @@ export default function ProfileEditScreen() {
       });
       router.back();
     } catch (err: unknown) {
-      Alert.alert(
+      showAlert(
         "저장 실패",
-        err instanceof Error ? err.message : "알 수 없는 오류",
+        friendlyError(err),
       );
     } finally {
       setSubmitting(false);

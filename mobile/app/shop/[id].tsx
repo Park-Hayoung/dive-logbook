@@ -28,7 +28,7 @@ export default function ShopDetailScreen() {
   if (!shop) {
     return (
       <SafeAreaView edges={["top"]} className="flex-1 items-center justify-center bg-gray-50 p-6">
-        <Text className="text-gray-400 mb-4">샵을 찾을 수 없습니다.</Text>
+        <Text className="text-gray-400 mb-4">샵을 찾을 수 없어요.</Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-gray-900 px-5 py-3 rounded-2xl"

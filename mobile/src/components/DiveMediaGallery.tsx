@@ -5,7 +5,6 @@ import {
   Image,
   Pressable,
   ActivityIndicator,
-  Alert,
   ScrollView,
   Modal,
   Linking,
@@ -19,6 +18,8 @@ import {
   useUploadDiveMedia,
 } from "@/src/hooks/use-dive-media";
 import type { DiveMedia } from "@/src/types/dive";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 
 type Props = { diveId: string };
 
@@ -63,7 +64,7 @@ export function DiveMediaGallery({ diveId }: Props) {
   const onPickAndUpload = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
+      showAlert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
       return;
     }
 
@@ -105,8 +106,7 @@ export function DiveMediaGallery({ diveId }: Props) {
         height: asset.height ?? null,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "알 수 없는 오류";
-      Alert.alert("업로드 실패", message);
+      showAlert("업로드 실패", friendlyError(err));
     } finally {
       setBusy(false);
     }
@@ -138,7 +138,7 @@ export function DiveMediaGallery({ diveId }: Props) {
         <ActivityIndicator />
       ) : media.length === 0 ? (
         <Text className="text-xs text-gray-400">
-          아직 등록된 사진/영상이 없습니다.
+          아직 등록된 사진/영상이 없어요.
         </Text>
       ) : (
         <ScrollView

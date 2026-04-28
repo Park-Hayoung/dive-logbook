@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,31 +14,42 @@ type Props = Omit<ScrollViewProps, "children"> & {
   keyboardVerticalOffset?: number;
 };
 
-export function KeyboardSafeScroll({
-  children,
-  bottomPadding = 80,
-  keyboardVerticalOffset = 0,
-  contentContainerStyle,
-  keyboardShouldPersistTaps = "handled",
-  ...rest
-}: Props) {
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={keyboardVerticalOffset}
-      style={{ flex: 1 }}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps={keyboardShouldPersistTaps}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          { flexGrow: 1, paddingBottom: bottomPadding },
-          contentContainerStyle,
-        ]}
-        {...rest}
+export const KeyboardSafeScroll = forwardRef<ScrollView, Props>(
+  function KeyboardSafeScroll(
+    {
+      children,
+      bottomPadding = 80,
+      keyboardVerticalOffset = 0,
+      contentContainerStyle,
+      keyboardShouldPersistTaps = "handled",
+      ...rest
+    },
+    ref,
+  ) {
+    return (
+      <KeyboardAvoidingView
+        // "padding" on both platforms is the most reliable on Android with
+        // edgeToEdgeEnabled — "height" tries to resize the window which doesn't
+        // work cleanly when content draws under system bars.
+        behavior="padding"
+        keyboardVerticalOffset={keyboardVerticalOffset}
+        style={{ flex: 1 }}
       >
-        {children}
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
+        <ScrollView
+          ref={ref}
+          keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+          showsVerticalScrollIndicator={false}
+          // iOS auto-scrolls focused TextInput above the keyboard.
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+          contentContainerStyle={[
+            { flexGrow: 1, paddingBottom: bottomPadding },
+            contentContainerStyle,
+          ]}
+          {...rest}
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  },
+);

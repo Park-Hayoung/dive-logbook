@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,6 +13,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/services/supabase";
 import { KeyboardSafeScroll, DateField } from "@/src/components";
+import { friendlyError } from "@/src/lib/error-messages";
+import { showAlert } from "@/src/lib/alert";
 
 type FieldKey =
   | "country"
@@ -61,21 +62,21 @@ export default function NewLogScreen() {
 
   const onSubmit = async () => {
     if (!userId) {
-      Alert.alert("오류", "로그인 세션이 없습니다.");
+      showAlert("오류", "로그인 세션이 없어요.");
       return;
     }
     if (!form.country.trim() || !form.location.trim()) {
-      Alert.alert("필수 항목", "국가와 지역은 필수입니다.");
+      showAlert("필수 항목", "국가와 지역은 필수예요.");
       return;
     }
     const maxDepth = parseNumber(form.maxDepth);
     if (maxDepth === null || maxDepth <= 0) {
-      Alert.alert("최대 수심", "0보다 큰 숫자를 입력해주세요.");
+      showAlert("최대 수심", "0보다 큰 숫자를 입력해주세요.");
       return;
     }
     const duration = parseNumber(form.durationMinutes);
     if (duration === null || duration <= 0) {
-      Alert.alert("다이브 시간", "분 단위 숫자를 입력해주세요.");
+      showAlert("다이브 시간", "분 단위 숫자를 입력해주세요.");
       return;
     }
 
@@ -113,8 +114,7 @@ export default function NewLogScreen() {
       await queryClient.invalidateQueries({ queryKey: ["dives", userId] });
       router.back();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "알 수 없는 오류";
-      Alert.alert("저장 실패", message);
+      showAlert("저장 실패", friendlyError(err));
     } finally {
       setSubmitting(false);
     }

@@ -1,10 +1,12 @@
 import { serve } from "@hono/node-server";
-import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
+import { stat } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 
 import { config } from "./config.js";
 import {
@@ -18,6 +20,24 @@ import {
   publicUrl,
   diveMediaPath,
 } from "./storage.js";
+
+const MIME_BY_EXT: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
+  webm: "video/webm",
+};
+
+function mimeFromFilename(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  return MIME_BY_EXT[ext] ?? "application/octet-stream";
+}
 
 const app = new Hono();
 app.use("*", logger());
@@ -103,17 +123,36 @@ app.put("/upload/:userId/:diveId/:filename", async (c) => {
 
 // ---------------------------------------------------------------------------
 // 3) Public read — Cloudflare CDN caches these.
+//    Manual streaming handler (Hono's serveStatic + absolute root + rewrite is
+//    fragile across versions; this is portable and explicit).
 // ---------------------------------------------------------------------------
-app.use(
-  "/file/*",
-  serveStatic({
-    root: "./",
-    rewriteRequestPath: (path) => {
-      // /file/dives/<diveId>/<filename> → <STORAGE_ROOT>/dives/<diveId>/<filename>
-      return path.replace(/^\/file\//, `${config.storageRoot}/`);
+app.get("/file/dives/:diveId/:filename", async (c) => {
+  const { diveId, filename } = c.req.param();
+  let absPath: string;
+  try {
+    absPath = diveMediaPath(diveId, filename);
+  } catch {
+    return c.json({ error: "Invalid path" }, 400);
+  }
+
+  let stats;
+  try {
+    stats = await stat(absPath);
+  } catch {
+    return c.json({ error: "Not found" }, 404);
+  }
+  if (!stats.isFile()) return c.json({ error: "Not found" }, 404);
+
+  const stream = createReadStream(absPath);
+  const webStream = Readable.toWeb(stream) as ReadableStream;
+  return new Response(webStream, {
+    headers: {
+      "Content-Type": mimeFromFilename(filename),
+      "Content-Length": String(stats.size),
+      "Cache-Control": "public, max-age=31536000, immutable",
     },
-  }),
-);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // 4) Delete (auth required, owner verified via JWT)

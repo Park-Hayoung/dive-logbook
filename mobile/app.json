@@ -64,7 +64,10 @@
         }
       ],
       "expo-build-properties",
-      "react-native-compressor"
+      "react-native-compressor",
+      "expo-secure-store",
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

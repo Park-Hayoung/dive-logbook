@@ -5,21 +5,45 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Image,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { X } from "lucide-react-native";
+import {
+  X,
+  Sun,
+  Cloud,
+  CloudRain,
+  Moon,
+  ImagePlus,
+  Video as VideoIcon,
+  Play,
+} from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/services/supabase";
 import { KeyboardSafeScroll, DateField } from "@/src/components";
+import {
+  EquipmentPickerField,
+  EquipmentPickerModal,
+} from "@/src/components/EquipmentPicker";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
+import {
+  useUserEquipment,
+  useRegisterEquipment,
+  type EquipmentCategory,
+} from "@/src/hooks/use-equipment";
+import { mediaStorage } from "@/src/services/media-storage";
+import {
+  LocationField,
+  emptyLocation,
+  type LocationFieldValue,
+} from "@/src/components/LocationField";
 
 type FieldKey =
-  | "country"
-  | "location"
-  | "point"
   | "maxDepth"
   | "avgDepth"
   | "waterTemp"
@@ -29,10 +53,20 @@ type FieldKey =
 
 type FormState = Record<FieldKey, string>;
 
+type WeatherCode = "sunny" | "cloudy" | "rainy" | "night";
+
+const WEATHER_OPTIONS: ReadonlyArray<{
+  code: WeatherCode;
+  label: string;
+  Icon: typeof Sun;
+}> = [
+  { code: "sunny", label: "맑음", Icon: Sun },
+  { code: "cloudy", label: "구름", Icon: Cloud },
+  { code: "rainy", label: "비", Icon: CloudRain },
+  { code: "night", label: "밤", Icon: Moon },
+];
+
 const INITIAL: FormState = {
-  country: "",
-  location: "",
-  point: "",
   maxDepth: "",
   avgDepth: "",
   waterTemp: "",
@@ -48,24 +82,141 @@ const parseNumber = (s: string): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+type PendingMedia = {
+  localUri: string;
+  kind: "image" | "video";
+  contentType: string;
+  filename: string;
+  durationSeconds: number | null;
+  width: number | null;
+  height: number | null;
+};
+
+const guessContentType = (uri: string, kind: "image" | "video"): string => {
+  const ext = uri.split(".").pop()?.toLowerCase() ?? "";
+  if (kind === "video") {
+    if (ext === "mov") return "video/quicktime";
+    if (ext === "m4v") return "video/x-m4v";
+    return "video/mp4";
+  }
+  if (ext === "png") return "image/png";
+  if (ext === "heic") return "image/heic";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
+};
+
+const filenameFrom = (uri: string, kind: "image" | "video"): string => {
+  const last = uri.split("/").pop();
+  if (last && last.includes(".")) return last;
+  return `${Date.now()}.${kind === "video" ? "mp4" : "jpg"}`;
+};
+
+async function tryCompressVideo(
+  uri: string,
+): Promise<{ uri: string; thumbnailUri: string | null }> {
+  try {
+    const mod = await import("@/src/services/video-compression");
+    const result = await mod.compressVideoForUpload(uri);
+    return { uri: result.uri, thumbnailUri: result.thumbnailUri };
+  } catch {
+    return { uri, thumbnailUri: null };
+  }
+}
+
 export default function NewLogScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState<FormState>(INITIAL);
+  const [location, setLocation] = useState<LocationFieldValue>(emptyLocation);
   const [diveStart, setDiveStart] = useState<Date | null>(null);
+  const [weather, setWeather] = useState<WeatherCode>("sunny");
   const [submitting, setSubmitting] = useState(false);
+
+  // ──── 장비 선택 ────
+  const { data: userEquipment } = useUserEquipment(userId);
+  const registerEquipment = useRegisterEquipment(userId);
+  const [selectedEqIds, setSelectedEqIds] = useState<Set<string>>(new Set());
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // ──── 사진/영상 펜딩 큐 ────
+  // 다이브 row 가 아직 없으니 업로드는 보류 — INSERT 성공 후 일괄 업로드.
+  const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+
+  const pickMedia = async (kind: "image" | "video") => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showAlert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: kind === "video" ? ["videos"] : ["images"],
+      quality: 0.9,
+      allowsMultipleSelection: kind === "image",
+      selectionLimit: kind === "image" ? 10 : 1,
+      videoMaxDuration: 300,
+    });
+    if (picked.canceled) return;
+    const additions: PendingMedia[] = picked.assets.map((asset) => {
+      const assetKind: "image" | "video" =
+        asset.type === "video" ? "video" : "image";
+      return {
+        localUri: asset.uri,
+        kind: assetKind,
+        contentType: asset.mimeType ?? guessContentType(asset.uri, assetKind),
+        filename: asset.fileName ?? filenameFrom(asset.uri, assetKind),
+        durationSeconds:
+          assetKind === "video" && typeof asset.duration === "number"
+            ? Math.round(asset.duration / 1000)
+            : null,
+        width: asset.width ?? null,
+        height: asset.height ?? null,
+      };
+    });
+    setPendingMedia((prev) => [...prev, ...additions]);
+  };
+
+  const removePending = (idx: number) =>
+    setPendingMedia((prev) => prev.filter((_, i) => i !== idx));
 
   const update = (key: FieldKey, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const toggleEquipment = (id: string) => {
+    setSelectedEqIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCreateInline = async (input: {
+    brand: string;
+    model: string;
+    category: EquipmentCategory;
+  }) => {
+    try {
+      const newId = await registerEquipment.mutateAsync({
+        kind: "custom",
+        ...input,
+      });
+      // 새로 등록한 장비를 자동 체크 → 이번 다이브에 즉시 연결됨
+      setSelectedEqIds((prev) => new Set(prev).add(newId));
+    } catch (e) {
+      showAlert("장비 추가 실패", friendlyError(e));
+      throw e; // 모달이 닫히지 않도록
+    }
+  };
 
   const onSubmit = async () => {
     if (!userId) {
       showAlert("오류", "로그인 세션이 없어요.");
       return;
     }
-    if (!form.country.trim() || !form.location.trim()) {
+    if (!location.country.trim() || !location.location.trim()) {
       showAlert("필수 항목", "국가와 지역은 필수예요.");
       return;
     }
@@ -93,25 +244,99 @@ export default function NewLogScreen() {
       const startedAt = diveStart ?? new Date(Date.now() - duration * 60_000);
       const endedAt = new Date(startedAt.getTime() + duration * 60_000);
 
-      const { error } = await supabase.from("dives").insert({
-        user_id: userId,
-        dive_number: nextNumber,
-        country: form.country.trim(),
-        location: form.location.trim(),
-        point: form.point.trim() || null,
-        started_at: startedAt.toISOString(),
-        ended_at: endedAt.toISOString(),
-        max_depth: maxDepth,
-        avg_depth: parseNumber(form.avgDepth),
-        water_temp: parseNumber(form.waterTemp),
-        visibility: parseNumber(form.visibility),
-        weather: "sunny",
-        memo: form.memo.trim() || null,
-        is_verified: false,
-      });
+      const { data: insertedDive, error } = await supabase
+        .from("dives")
+        .insert({
+          user_id: userId,
+          dive_number: nextNumber,
+          country: location.country.trim(),
+          location: location.location.trim(),
+          point: location.point.trim() || null,
+          lat: location.lat,
+          lng: location.lng,
+          place_id: location.placeId,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+          max_depth: maxDepth,
+          avg_depth: parseNumber(form.avgDepth),
+          water_temp: parseNumber(form.waterTemp),
+          visibility: parseNumber(form.visibility),
+          weather,
+          memo: form.memo.trim() || null,
+          is_verified: false,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
 
+      // 선택된 보유 장비 → 이번 다이브에 연결
+      const diveId = (insertedDive as { id: string }).id;
+      if (selectedEqIds.size > 0) {
+        const links = [...selectedEqIds].map((eqId) => ({
+          dive_id: diveId,
+          user_equipment_id: eqId,
+        }));
+        const { error: linkError } = await supabase
+          .from("dive_user_equipment")
+          .insert(links);
+        if (linkError) throw linkError;
+      }
+
+      // 사진/영상 업로드 — 다이브 row 가 생긴 뒤에야 가능
+      let uploadFailures = 0;
+      if (pendingMedia.length > 0) {
+        for (let i = 0; i < pendingMedia.length; i++) {
+          const m = pendingMedia[i];
+          setUploadStatus(
+            `미디어 업로드 ${i + 1}/${pendingMedia.length} (${
+              m.kind === "video" ? "영상" : "사진"
+            })`,
+          );
+          try {
+            let uploadUri = m.localUri;
+            let thumbnailUri: string | null = null;
+            if (m.kind === "video") {
+              const compressed = await tryCompressVideo(m.localUri);
+              uploadUri = compressed.uri;
+              thumbnailUri = compressed.thumbnailUri;
+            }
+            const uploaded = await mediaStorage.upload({
+              scope: { type: "dive", diveId },
+              localUri: uploadUri,
+              originalFilename: m.filename,
+              contentType: m.contentType,
+              kind: m.kind,
+            });
+            const { error: mediaError } = await supabase
+              .from("dive_media")
+              .insert({
+                dive_id: diveId,
+                storage_url: uploaded.url,
+                kind: m.kind,
+                provider: uploaded.provider,
+                file_size_bytes: uploaded.sizeBytes,
+                original_filename: uploaded.filename,
+                thumbnail_url: thumbnailUri,
+                duration_seconds: m.durationSeconds,
+                width: m.width,
+                height: m.height,
+              });
+            if (mediaError) throw mediaError;
+          } catch (e) {
+            uploadFailures += 1;
+            console.warn("dive media upload failed", e);
+          }
+        }
+        setUploadStatus(null);
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["dives", userId] });
+      if (uploadFailures > 0) {
+        showAlert(
+          "일부 미디어 업로드 실패",
+          `${uploadFailures}개 항목이 업로드되지 않았어요. 로그 상세에서 다시 시도할 수 있어요.`,
+        );
+      }
       router.back();
     } catch (err: unknown) {
       showAlert("저장 실패", friendlyError(err));
@@ -141,26 +366,10 @@ export default function NewLogScreen() {
           BLE 통합 전 임시 수동 입력 폼 · is_verified=false
         </Text>
 
-        <Field
-          label="국가 *"
-          value={form.country}
-          onChangeText={(v) => update("country", v)}
-          placeholder="대한민국"
-          editable={!submitting}
-        />
-        <Field
-          label="지역 *"
-          value={form.location}
-          onChangeText={(v) => update("location", v)}
-          placeholder="제주도 서귀포"
-          editable={!submitting}
-        />
-        <Field
-          label="포인트"
-          value={form.point}
-          onChangeText={(v) => update("point", v)}
-          placeholder="문섬 새끼섬"
-          editable={!submitting}
+        <LocationField
+          value={location}
+          onChange={setLocation}
+          disabled={submitting}
         />
 
         <DateField
@@ -228,6 +437,117 @@ export default function NewLogScreen() {
           editable={!submitting}
         />
 
+        <View className="gap-1.5">
+          <Text className="text-xs font-bold text-gray-700">날씨</Text>
+          <View className="flex-row gap-2">
+            {WEATHER_OPTIONS.map(({ code, label, Icon }) => {
+              const active = weather === code;
+              return (
+                <Pressable
+                  key={code}
+                  onPress={() => setWeather(code)}
+                  disabled={submitting}
+                  accessibilityLabel={`날씨 ${label}`}
+                  className={`flex-1 items-center gap-1 py-3 rounded-2xl border ${
+                    active
+                      ? "bg-brand-600 border-brand-600"
+                      : "bg-white border-gray-200"
+                  }`}
+                >
+                  <Icon
+                    size={18}
+                    color={active ? "#FFFFFF" : "#6B7280"}
+                    strokeWidth={active ? 2.5 : 2}
+                  />
+                  <Text
+                    className={`text-[10px] font-black ${
+                      active ? "text-white" : "text-gray-700"
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <EquipmentPickerField
+          items={userEquipment ?? []}
+          selectedIds={selectedEqIds}
+          onToggle={toggleEquipment}
+          onOpenPicker={() => setPickerOpen(true)}
+          disabled={submitting}
+        />
+
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xs font-bold text-gray-700">사진 / 영상</Text>
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={() => pickMedia("image")}
+                disabled={submitting}
+                className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
+              >
+                <ImagePlus size={12} color="#2563EB" />
+                <Text className="text-[10px] font-black text-brand-700">
+                  사진
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => pickMedia("video")}
+                disabled={submitting}
+                className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
+              >
+                <VideoIcon size={12} color="#2563EB" />
+                <Text className="text-[10px] font-black text-brand-700">
+                  영상
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {pendingMedia.length === 0 ? (
+            <Text className="text-[11px] text-gray-400">
+              저장 시 함께 업로드돼요. 영상은 자동 압축됩니다.
+            </Text>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {pendingMedia.map((m, idx) => (
+                <View
+                  key={`${m.localUri}-${idx}`}
+                  className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100"
+                >
+                  <Image
+                    source={{ uri: m.localUri }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                  {m.kind === "video" ? (
+                    <View className="absolute inset-0 items-center justify-center">
+                      <View className="w-7 h-7 rounded-full bg-black/50 items-center justify-center">
+                        <Play size={12} color="#fff" />
+                      </View>
+                    </View>
+                  ) : null}
+                  <Pressable
+                    onPress={() => removePending(idx)}
+                    disabled={submitting}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 items-center justify-center"
+                    hitSlop={8}
+                  >
+                    <X size={11} color="#fff" />
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
         <View className="gap-1">
           <Text className="text-xs font-bold text-gray-700">메모</Text>
           <TextInput
@@ -249,12 +569,29 @@ export default function NewLogScreen() {
           className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <View className="flex-row items-center gap-2">
+              <ActivityIndicator color="#fff" />
+              {uploadStatus ? (
+                <Text className="text-white text-xs font-black">
+                  {uploadStatus}
+                </Text>
+              ) : null}
+            </View>
           ) : (
             <Text className="text-white font-black">저장</Text>
           )}
         </Pressable>
       </KeyboardSafeScroll>
+
+      <EquipmentPickerModal
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        items={userEquipment ?? []}
+        selectedIds={selectedEqIds}
+        onPick={(id) => setSelectedEqIds((prev) => new Set(prev).add(id))}
+        onCreateInline={handleCreateInline}
+        creating={registerEquipment.isPending}
+      />
     </SafeAreaView>
   );
 }
@@ -293,3 +630,5 @@ function Field({
     </View>
   );
 }
+
+// 장비 섹션은 src/components/EquipmentPicker.tsx 로 분리됨

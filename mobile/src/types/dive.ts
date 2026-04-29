@@ -7,6 +7,9 @@ export type Dive = {
   country: string;
   location: string;
   point: string;
+  lat: number | null;
+  lng: number | null;
+  placeId: string | null;
   startedAt: string;
   endedAt: string;
   maxDepth: number;

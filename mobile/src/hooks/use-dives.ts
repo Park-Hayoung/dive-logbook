@@ -9,6 +9,9 @@ type DiveRow = {
   country: string;
   location: string;
   point: string | null;
+  lat: number | null;
+  lng: number | null;
+  place_id: string | null;
   started_at: string;
   ended_at: string;
   duration_minutes: number;
@@ -44,6 +47,9 @@ const mapDive = (row: DiveRow): Dive => ({
   country: row.country,
   location: row.location,
   point: row.point ?? "",
+  lat: row.lat,
+  lng: row.lng,
+  placeId: row.place_id,
   startedAt: row.started_at,
   endedAt: row.ended_at,
   maxDepth: toNumber(row.max_depth),

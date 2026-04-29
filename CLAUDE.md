@@ -138,10 +138,14 @@ python logbook/parser/parse_dive_logs.py
 3. `libdivecomputer/src/shearwater_common.{c,h}`, `shearwater_petrel.c` — 원조 C 구현
 
 ### Auth Flow
-- `app/_layout.tsx` 에서 `useAuthStore.hydrate()` 호출 → 세션 복구
+- `app/_layout.tsx` 의 `RootGuard` 가 라우트 가드 + 세션 복구 담당
+  - 미인증 → `/(auth)/login` 으로 redirect
+  - 세션 있으나 프로필 미생성 → `/(auth)/onboarding`
+  - 세션+프로필 있는데 auth 그룹에 있음 → `/(tabs)` 로 바운스
+  - 프로필 fetch 에러일 땐 onboarding으로 튕기지 않음 (네트워크 에러 분리)
 - `app/(auth)/login.tsx` 에서 카카오/구글/애플 OAuth (Supabase Auth)
-- 인증 후 `(tabs)` 그룹으로 라우팅
-- 미인증 시 라우트 가드 (TODO)
+- `signOut` 시 TanStack Query 캐시 전체 clear → 계정 전환 시 이전 사용자 데이터 잠깐 노출 방지
+- DB 레벨 RLS도 깔려 있어서 (78개 정책) 클라이언트 가드 우회되더라도 백엔드에서 거부
 
 ### Data Flow (다이브 기록)
 ```

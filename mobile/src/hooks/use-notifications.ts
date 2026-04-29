@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/src/services/supabase";
 
 export type NotificationKind =
@@ -194,11 +195,113 @@ export function useNotifications(userId: string | undefined) {
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+// 누적 dismissed id 캡 — 같은 id 가 다시 잡히는 걸 방지하기 위해 보관하지만 무한정
+// 늘어나면 안 됨. dismiss-all 호출 시 id 목록은 비우므로 일반적인 사용에선 가득 찰
+// 일이 거의 없다.
+const DISMISSED_CAP = 200;
+
+// 알림 테이블에 read 컬럼이 없어서, 사용자의 dismiss 액션을 디바이스에 저장한다:
+//   ids       — 개별 스와이프-삭제로 숨긴 알림 id 들 (FIFO, 200개 cap)
+//   lastSeenAt — "모두 읽음" 누른 시각. 그 이전 알림은 모두 숨김 처리.
+// 첫 실행으로 lastSeenAt 이 null 이면 7일 컷 폴백 — 첫 진입에서 99+ 압도 방지.
+const dismissalKey = (userId: string) => `notifications:dismissals:${userId}`;
+
+export type NotificationDismissals = {
+  ids: string[];
+  lastSeenAt: string | null;
+};
+
+const emptyDismissals: NotificationDismissals = { ids: [], lastSeenAt: null };
+
+const readDismissals = async (
+  userId: string,
+): Promise<NotificationDismissals> => {
+  const raw = await AsyncStorage.getItem(dismissalKey(userId));
+  if (!raw) return emptyDismissals;
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      ids: Array.isArray(parsed.ids) ? parsed.ids.filter((x: unknown) => typeof x === "string") : [],
+      lastSeenAt: typeof parsed.lastSeenAt === "string" ? parsed.lastSeenAt : null,
+    };
+  } catch {
+    return emptyDismissals;
+  }
+};
+
+const writeDismissals = (userId: string, d: NotificationDismissals) =>
+  AsyncStorage.setItem(dismissalKey(userId), JSON.stringify(d));
+
+export function useNotificationDismissals(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["notifications-dismissals", userId],
+    enabled: !!userId,
+    queryFn: () => readDismissals(userId!),
+  });
+}
+
+export function useDismissNotification(userId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!userId) return;
+      const cur = await readDismissals(userId);
+      if (cur.ids.includes(id)) return;
+      const next = [...cur.ids, id];
+      // FIFO cap
+      const trimmed = next.length > DISMISSED_CAP ? next.slice(-DISMISSED_CAP) : next;
+      await writeDismissals(userId, { ...cur, ids: trimmed });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications-dismissals", userId] });
+    },
+  });
+}
+
+export function useDismissAllNotifications(userId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!userId) return;
+      // lastSeenAt 가 모든 ids 를 덮으므로 명시 ids 는 비워도 안전.
+      await writeDismissals(userId, {
+        ids: [],
+        lastSeenAt: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications-dismissals", userId] });
+    },
+  });
+}
+
+// 원본 알림 + dismissals 를 합쳐서 화면/카운트 양쪽이 같은 가시 목록을 사용하도록.
+const applyDismissals = (
+  notifications: Notification[] | undefined,
+  d: NotificationDismissals | undefined,
+): Notification[] => {
+  if (!notifications) return [];
+  const ids = new Set(d?.ids ?? []);
+  // lastSeenAt 가 없으면 7일 컷 폴백.
+  const cutoff = d?.lastSeenAt
+    ? new Date(d.lastSeenAt).getTime()
+    : Date.now() - SEVEN_DAYS_MS;
+  return notifications.filter(
+    (n) => !ids.has(n.id) && new Date(n.createdAt).getTime() > cutoff,
+  );
+};
+
+// 화면용: dismiss 가 반영된 가시 알림 목록.
+export function useVisibleNotifications(userId: string | undefined) {
+  const q = useNotifications(userId);
+  const dq = useNotificationDismissals(userId);
+  const data = applyDismissals(q.data, dq.data);
+  return { ...q, data };
+}
 
 export function useRecentNotificationCount(userId: string | undefined) {
   const q = useNotifications(userId);
-  const since = Date.now() - SEVEN_DAYS_MS;
-  const recent =
-    q.data?.filter((n) => new Date(n.createdAt).getTime() >= since) ?? [];
-  return { count: recent.length, ...q };
+  const dq = useNotificationDismissals(userId);
+  const visible = applyDismissals(q.data, dq.data);
+  return { count: visible.length, ...q };
 }

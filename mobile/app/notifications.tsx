@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   View,
   Text,
@@ -15,11 +16,17 @@ import {
   MessageCircle,
   UserPlus,
   Users,
+  Trash2,
 } from "lucide-react-native";
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from "react-native-gesture-handler/ReanimatedSwipeable";
 
 import { useAuthStore } from "@/src/store/auth-store";
 import {
-  useNotifications,
+  useVisibleNotifications,
+  useDismissNotification,
+  useDismissAllNotifications,
   type Notification,
 } from "@/src/hooks/use-notifications";
 
@@ -42,7 +49,9 @@ export default function NotificationsScreen() {
     error,
     refetch,
     isRefetching,
-  } = useNotifications(userId);
+  } = useVisibleNotifications(userId);
+  const dismiss = useDismissNotification(userId);
+  const dismissAll = useDismissAllNotifications(userId);
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50">
@@ -54,6 +63,18 @@ export default function NotificationsScreen() {
           <ChevronLeft size={22} color="#374151" />
         </Pressable>
         <Text className="font-black text-base flex-1">알림</Text>
+        {notifications.length > 0 ? (
+          <Pressable
+            onPress={() => dismissAll.mutate()}
+            hitSlop={8}
+            disabled={dismissAll.isPending}
+            className="px-3 py-1.5 rounded-full bg-brand-50"
+          >
+            <Text className="text-[11px] font-black text-brand-700">
+              모두 읽음
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView
@@ -85,10 +106,11 @@ export default function NotificationsScreen() {
         ) : (
           <View className="gap-2">
             {notifications.map((n) => (
-              <NotificationRow
+              <SwipeableNotificationRow
                 key={n.id}
                 n={n}
                 onPress={() => handlePress(n, router)}
+                onDismiss={() => dismiss.mutate(n.id)}
               />
             ))}
           </View>
@@ -106,6 +128,44 @@ function handlePress(n: Notification, router: ReturnType<typeof useRouter>) {
   } else if (n.kind === "team_join_request" && n.teamId) {
     router.push({ pathname: "/team/[id]", params: { id: n.teamId } });
   }
+}
+
+function SwipeableNotificationRow({
+  n,
+  onPress,
+  onDismiss,
+}: {
+  n: Notification;
+  onPress: () => void;
+  onDismiss: () => void;
+}) {
+  const ref = useRef<SwipeableMethods>(null);
+
+  const renderRightActions = () => (
+    <View className="justify-center pl-2">
+      <Pressable
+        onPress={() => {
+          ref.current?.close();
+          onDismiss();
+        }}
+        className="bg-red-500 h-full px-5 rounded-2xl items-center justify-center"
+      >
+        <Trash2 size={18} color="#FFFFFF" />
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <ReanimatedSwipeable
+      ref={ref}
+      friction={2}
+      rightThreshold={40}
+      overshootRight={false}
+      renderRightActions={renderRightActions}
+    >
+      <NotificationRow n={n} onPress={onPress} />
+    </ReanimatedSwipeable>
+  );
 }
 
 function NotificationRow({

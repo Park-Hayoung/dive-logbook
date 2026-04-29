@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/src/services/supabase";
+import { queryClient } from "@/src/lib/query-client";
 
 type AuthState = {
   session: Session | null;
@@ -53,5 +54,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     set({ session: null, user: null });
+    // 다른 계정으로 갈아탈 때 이전 사용자의 데이터가 잠깐 노출되는 걸 막는다.
+    queryClient.clear();
   },
 }));

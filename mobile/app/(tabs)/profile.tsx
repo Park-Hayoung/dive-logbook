@@ -9,6 +9,9 @@ import {
   Users,
   ChevronRight,
   Camera,
+  ShieldCheck,
+  Globe,
+  Anchor,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -31,16 +34,36 @@ export default function ProfileScreen() {
 
   const stats = (() => {
     if (!dives || dives.length === 0) {
-      return { count: 0, maxDepth: 0, totalMinutes: 0 };
+      return {
+        count: 0,
+        verifiedCount: 0,
+        maxDepth: 0,
+        totalMinutes: 0,
+        countries: [] as Array<{ country: string; count: number }>,
+      };
     }
-    return dives.reduce(
-      (acc, d) => ({
-        count: acc.count + 1,
-        maxDepth: Math.max(acc.maxDepth, d.maxDepth),
-        totalMinutes: acc.totalMinutes + d.durationMinutes,
-      }),
-      { count: 0, maxDepth: 0, totalMinutes: 0 },
-    );
+    const countryCounts = new Map<string, number>();
+    let verifiedCount = 0;
+    let maxDepth = 0;
+    let totalMinutes = 0;
+    for (const d of dives) {
+      const c = d.country.trim();
+      if (c) countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
+      if (d.isVerified) verifiedCount += 1;
+      if (d.maxDepth > maxDepth) maxDepth = d.maxDepth;
+      totalMinutes += d.durationMinutes;
+    }
+    const countries = [...countryCounts.entries()]
+      .map(([country, count]) => ({ country, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    return {
+      count: dives.length,
+      verifiedCount,
+      maxDepth,
+      totalMinutes,
+      countries,
+    };
   })();
 
   const totalDives =
@@ -134,9 +157,10 @@ export default function ProfileScreen() {
             </View>
             <View className="flex-1">
               <StatBox
-                label="앱 기록"
-                value={stats.count}
+                label="인증"
+                value={stats.verifiedCount}
                 unit="회"
+                icon={<ShieldCheck size={10} color="#9CA3AF" />}
               />
             </View>
           </View>
@@ -171,6 +195,40 @@ export default function ProfileScreen() {
               />
             </View>
           </View>
+
+          {stats.countries.length > 0 ? (
+            <View className="bg-white p-5 rounded-3xl mb-4">
+              <View className="flex-row items-center gap-1.5 mb-3">
+                <Globe size={12} color="#6B7280" />
+                <Text className="text-[10px] font-black text-gray-400 uppercase">
+                  주 방문 국가
+                </Text>
+              </View>
+              <View className="gap-3">
+                {stats.countries.map((c) => {
+                  const pct = Math.round((c.count / stats.count) * 100);
+                  return (
+                    <View key={c.country} className="gap-1">
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-bold text-gray-700">
+                          {c.country}
+                        </Text>
+                        <Text className="text-xs text-gray-500">
+                          {c.count}회 · {pct}%
+                        </Text>
+                      </View>
+                      <View className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <View
+                          className="h-full bg-brand-500 rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
         </>
       )}
 
@@ -225,6 +283,22 @@ export default function ProfileScreen() {
           <ChevronRight size={16} color="#D1D5DB" />
         </Pressable>
       )}
+
+      <Pressable
+        onPress={() => router.push("/equipment" as never)}
+        className="bg-white p-4 rounded-2xl flex-row items-center gap-3 mb-3"
+      >
+        <View className="w-10 h-10 rounded-2xl bg-brand-50 items-center justify-center">
+          <Anchor size={18} color="#2563EB" />
+        </View>
+        <View className="flex-1">
+          <Text className="font-black text-sm text-gray-900">장비 관리</Text>
+          <Text className="text-[10px] text-gray-500">
+            보유 다이빙 장비를 등록하고 관리해요
+          </Text>
+        </View>
+        <ChevronRight size={16} color="#D1D5DB" />
+      </Pressable>
 
       <Pressable
         onPress={signOut}

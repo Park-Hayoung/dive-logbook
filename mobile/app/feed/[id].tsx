@@ -80,7 +80,7 @@ export default function FeedDetailScreen() {
 
   const onDelete = () => {
     if (!feed) return;
-    showAlert("피드 삭제", "이 글을 정말 삭제하시겠어요? 댓글과 사진도 함께 삭제돼요.", [
+    showAlert("피드 삭제", "이 글을 정말 삭제하시겠어요?", [
       { text: "취소" },
       {
         text: "삭제",

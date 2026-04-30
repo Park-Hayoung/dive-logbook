@@ -83,9 +83,20 @@ export default function LoginScreen() {
           </Pressable>
 
           <Pressable
+            onPress={() => router.push("/(auth)/forgot-password" as never)}
+            disabled={submitting}
+            className="items-center mt-1 py-1"
+          >
+            <Text className="text-xs text-gray-500">
+              비밀번호를 잊으셨나요?{" "}
+              <Text className="text-brand-700 font-black">재설정</Text>
+            </Text>
+          </Pressable>
+
+          <Pressable
             onPress={() => router.push("/(auth)/signup" as never)}
             disabled={submitting}
-            className="items-center mt-2 py-2"
+            className="items-center mt-1 py-2"
           >
             <Text className="text-xs text-gray-500">
               계정이 없나요?{" "}

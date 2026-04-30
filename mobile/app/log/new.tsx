@@ -199,12 +199,12 @@ export default function NewLogScreen() {
     category: EquipmentCategory;
   }) => {
     try {
-      const newId = await registerEquipment.mutateAsync({
+      const created = await registerEquipment.mutateAsync({
         kind: "custom",
         ...input,
       });
       // 새로 등록한 장비를 자동 체크 → 이번 다이브에 즉시 연결됨
-      setSelectedEqIds((prev) => new Set(prev).add(newId));
+      setSelectedEqIds((prev) => new Set(prev).add(created.id));
     } catch (e) {
       showAlert("장비 추가 실패", friendlyError(e));
       throw e; // 모달이 닫히지 않도록
@@ -269,8 +269,11 @@ export default function NewLogScreen() {
         .single();
       if (error) throw error;
 
-      // 선택된 보유 장비 → 이번 다이브에 연결
+      // 선택된 보유 장비 → 이번 다이브에 연결.
+      // 장비 링크 실패는 다이브 저장 자체를 망가뜨리지 않게 별도 처리. 다이브 row 는 이미
+      // 저장됐기 때문에 여기서 throw 하면 사용자가 "저장 실패"로 오해해 재시도 → 중복 발생.
       const diveId = (insertedDive as { id: string }).id;
+      let equipmentLinkError: string | null = null;
       if (selectedEqIds.size > 0) {
         const links = [...selectedEqIds].map((eqId) => ({
           dive_id: diveId,
@@ -279,7 +282,10 @@ export default function NewLogScreen() {
         const { error: linkError } = await supabase
           .from("dive_user_equipment")
           .insert(links);
-        if (linkError) throw linkError;
+        if (linkError) {
+          console.error("dive_user_equipment insert failed", linkError);
+          equipmentLinkError = linkError.message ?? "장비 연결에 실패했어요.";
+        }
       }
 
       // 사진/영상 업로드 — 다이브 row 가 생긴 뒤에야 가능
@@ -331,11 +337,18 @@ export default function NewLogScreen() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ["dives", userId] });
+      // 다이브 자체는 저장됐으므로 partial 실패는 토스트성 알림으로만 알림 — back() 은 실행.
+      const warnings: string[] = [];
+      if (equipmentLinkError) {
+        warnings.push(`장비 연결 실패: ${equipmentLinkError}`);
+      }
       if (uploadFailures > 0) {
-        showAlert(
-          "일부 미디어 업로드 실패",
-          `${uploadFailures}개 항목이 업로드되지 않았어요. 로그 상세에서 다시 시도할 수 있어요.`,
+        warnings.push(
+          `${uploadFailures}개 미디어 업로드 실패 (로그 상세에서 다시 시도 가능)`,
         );
+      }
+      if (warnings.length > 0) {
+        showAlert("일부 항목 저장 안됨", warnings.join("\n\n"));
       }
       router.back();
     } catch (err: unknown) {

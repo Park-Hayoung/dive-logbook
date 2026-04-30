@@ -313,7 +313,7 @@ export type RegisterEquipmentInput =
 export function useRegisterEquipment(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: RegisterEquipmentInput): Promise<string> => {
+    mutationFn: async (input: RegisterEquipmentInput): Promise<UserEquipment> => {
       if (!userId) throw new Error("로그인이 필요해요.");
 
       const base = {
@@ -333,15 +333,31 @@ export function useRegisterEquipment(userId: string | undefined) {
               custom_model: input.model,
             };
 
+      // 카탈로그 join 까지 한 번에 가져와서 캐시에 직접 넣을 수 있게 함 — 화면 race 방지.
       const { data, error } = await supabase
         .from("user_equipment")
         .insert(row)
-        .select("id")
+        .select(
+          `id, user_id, equipment_id, custom_brand, custom_model, category,
+           serial_no, purchased_at, photo_url, notes, created_at,
+           catalog:equipment!equipment_id(id, brand, brand_en, model, category)`,
+        )
         .single();
       if (error) throw new Error(error.message || JSON.stringify(error));
-      return (data as { id: string }).id;
+      return mapUserEquipment(data as unknown as UserEquipmentRow);
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
+      // 새 항목을 캐시 맨 앞에 직접 주입 → 화면이 invalidate-refetch 를 기다리지 않아도
+      // 등록한 장비 배지가 즉시 보인다. 그 다음 invalidate 로 서버와 결국 일치시킴.
+      qc.setQueryData<UserEquipment[] | undefined>(
+        ["user-equipment", userId],
+        (prev) => {
+          if (!prev) return [created];
+          // 중복 방지 (이론상 없지만)
+          if (prev.some((p) => p.id === created.id)) return prev;
+          return [created, ...prev];
+        },
+      );
       qc.invalidateQueries({ queryKey: ["user-equipment", userId] });
     },
   });

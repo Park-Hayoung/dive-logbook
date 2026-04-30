@@ -79,6 +79,10 @@ function RootGuard() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="log/new" options={{ presentation: "modal" }} />
       <Stack.Screen name="log/[id]" />
+      <Stack.Screen
+        name="log/edit/[id]"
+        options={{ presentation: "modal" }}
+      />
       <Stack.Screen name="feed/new" options={{ presentation: "modal" }} />
       <Stack.Screen name="feed/[id]" />
       <Stack.Screen name="feed/edit/[id]" options={{ presentation: "modal" }} />
@@ -90,6 +94,7 @@ function RootGuard() {
       <Stack.Screen name="team/new" options={{ presentation: "modal" }} />
       <Stack.Screen name="search" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="settings" />
       <Stack.Screen name="shop/search" />
       <Stack.Screen name="shop/[id]" />
       <Stack.Screen name="equipment/index" />

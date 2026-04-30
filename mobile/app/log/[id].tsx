@@ -22,13 +22,21 @@ import {
   Anchor,
   CalendarDays,
   Share2,
+  Pencil,
+  Trash2,
   X,
 } from "lucide-react-native";
 
-import { useDive } from "@/src/hooks/use-dives";
+import {
+  useDive,
+  useDeleteDive,
+  useDiveEquipmentDetails,
+} from "@/src/hooks/use-dives";
 import { useCreateFeed } from "@/src/hooks/use-feeds";
+import { useDiveMedia } from "@/src/hooks/use-dive-media";
 import { useAuthStore } from "@/src/store/auth-store";
 import { StatBox, DiveMediaGallery } from "@/src/components";
+import { CATEGORY_LABEL } from "@/src/hooks/use-equipment";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 import { formatDate, formatTime } from "@/src/lib/format";
@@ -38,11 +46,49 @@ export default function LogDetailScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
   const { data: dive, isLoading } = useDive(id);
+  const { data: equipment = [], isLoading: equipmentLoading } =
+    useDiveEquipmentDetails(id);
+  const { data: media = [] } = useDiveMedia(id);
   const createFeed = useCreateFeed(userId);
+  const deleteDive = useDeleteDive(userId);
 
   const [shareOpen, setShareOpen] = useState(false);
   const [caption, setCaption] = useState("");
   const [sharing, setSharing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const isOwner = !!dive && !!userId && dive.userId === userId;
+
+  const handleEdit = () => {
+    if (!dive) return;
+    router.push(`/log/edit/${dive.id}` as never);
+  };
+
+  const handleDelete = () => {
+    if (!dive) return;
+    showAlert(
+      "로그 삭제",
+      "이 다이브 로그를 삭제할까요? 첨부된 사진/영상도 함께 사라집니다.",
+      [
+        { text: "취소", style: "cancel" },
+        {
+          text: "삭제",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteDive.mutateAsync(dive.id);
+              router.back();
+            } catch (e) {
+              showAlert("삭제 실패", friendlyError(e));
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const onShare = async () => {
     if (!dive) return;
@@ -50,11 +96,16 @@ export default function LogDetailScreen() {
     try {
       const defaultText = `${dive.location}, ${dive.country} · 최대 ${dive.maxDepth.toFixed(1)}m / ${dive.durationMinutes}분`;
       const finalContent = caption.trim() || defaultText;
+      const cover =
+        media.find((m) => m.kind === "image")?.storageUrl ??
+        media[0]?.thumbnailUrl ??
+        null;
       await createFeed.mutateAsync({
         content: finalContent,
         type: "log",
         location: dive.location,
         linkedDiveId: dive.id,
+        imageUrl: cover,
       });
       setShareOpen(false);
       setCaption("");
@@ -109,6 +160,30 @@ export default function LogDetailScreen() {
               <ChevronLeft size={22} color="#374151" />
             </Pressable>
             <View className="flex-row items-center gap-2">
+              {isOwner ? (
+                <>
+                  <Pressable
+                    onPress={handleEdit}
+                    disabled={deleting}
+                    accessibilityLabel="로그 수정"
+                    className="w-8 h-8 bg-gray-100 rounded-full items-center justify-center"
+                  >
+                    <Pencil size={14} color="#374151" />
+                  </Pressable>
+                  <Pressable
+                    onPress={handleDelete}
+                    disabled={deleting}
+                    accessibilityLabel="로그 삭제"
+                    className="w-8 h-8 bg-red-50 rounded-full items-center justify-center"
+                  >
+                    {deleting ? (
+                      <ActivityIndicator size="small" color="#DC2626" />
+                    ) : (
+                      <Trash2 size={14} color="#DC2626" />
+                    )}
+                  </Pressable>
+                </>
+              ) : null}
               <Pressable
                 onPress={() => setShareOpen(true)}
                 className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
@@ -221,12 +296,42 @@ export default function LogDetailScreen() {
           </View>
 
           <View className="bg-white p-5 rounded-3xl border border-gray-100 mt-3">
-            <Text className="text-[10px] font-black text-gray-400 uppercase mb-2">
-              장비 / 버디
+            <Text className="text-[10px] font-black text-gray-400 uppercase mb-3">
+              사용 장비
             </Text>
-            <Text className="text-xs text-gray-400">
-              추후 추가 — 함께한 다이버 태그, 사용 장비 기록
-            </Text>
+            {equipmentLoading ? (
+              <ActivityIndicator size="small" />
+            ) : equipment.length === 0 ? (
+              <Text className="text-xs text-gray-400">
+                기록된 장비가 없어요.
+              </Text>
+            ) : (
+              <View className="flex-row flex-wrap gap-2">
+                {equipment.map((eq) => (
+                  <View
+                    key={eq.id}
+                    className="flex-row items-center gap-2 bg-brand-50 border border-brand-100 rounded-2xl px-3 py-2"
+                  >
+                    <View className="w-7 h-7 rounded-lg bg-white items-center justify-center">
+                      <Anchor size={13} color="#2563EB" />
+                    </View>
+                    <View>
+                      <Text className="text-[9px] font-black text-brand-700 uppercase">
+                        {CATEGORY_LABEL[
+                          eq.category as keyof typeof CATEGORY_LABEL
+                        ] ?? eq.category}
+                      </Text>
+                      <Text
+                        className="text-xs font-black text-gray-900 max-w-[200px]"
+                        numberOfLines={1}
+                      >
+                        {eq.brand} {eq.model}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>

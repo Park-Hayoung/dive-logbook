@@ -21,6 +21,7 @@ import {
   Anchor,
   Pencil,
   Trash2,
+  Play,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -33,6 +34,7 @@ import {
   useFeedComments,
   useAddFeedComment,
 } from "@/src/hooks/use-feed-comments";
+import { useDiveMedia } from "@/src/hooks/use-dive-media";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 
@@ -54,6 +56,7 @@ export default function FeedDetailScreen() {
   const { data: feed, isLoading } = useFeed(id, userId);
   const { data: comments = [], isLoading: commentsLoading } =
     useFeedComments(id);
+  const { data: diveMedia = [] } = useDiveMedia(feed?.linkedDiveId ?? undefined);
   const toggleLike = useToggleFeedLike(userId);
   const addComment = useAddFeedComment(id, userId);
   const deleteFeed = useDeleteFeed(userId);
@@ -233,7 +236,37 @@ export default function FeedDetailScreen() {
               </Text>
             ) : null}
 
-            {feed.imageUrl ? (
+            {feed.linkedDiveId && diveMedia.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8 }}
+                className="mb-3"
+              >
+                {diveMedia.map((m) => {
+                  const thumb = m.thumbnailUrl ?? m.storageUrl;
+                  return (
+                    <View
+                      key={m.id}
+                      className="w-56 h-56 rounded-2xl overflow-hidden bg-gray-100"
+                    >
+                      <Image
+                        source={{ uri: thumb }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                      {m.kind === "video" ? (
+                        <View className="absolute inset-0 items-center justify-center">
+                          <View className="w-10 h-10 rounded-full bg-black/50 items-center justify-center">
+                            <Play size={16} color="#fff" />
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            ) : feed.imageUrl ? (
               <Image
                 source={{ uri: feed.imageUrl }}
                 className="w-full h-56 rounded-2xl mb-3"

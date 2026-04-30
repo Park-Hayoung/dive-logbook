@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/src/services/supabase";
 
 export type FeedAuthor = {
@@ -37,6 +42,75 @@ type FeedRow = {
   feed_likes: { count: number }[] | null;
   feed_comments: { count: number }[] | null;
 };
+
+export type FeedThumb = {
+  id: string;
+  imageUrl: string;
+  createdAt: string;
+  hasMultipleMedia: boolean;
+};
+
+const FEED_GRID_PAGE_SIZE = 30;
+
+export function useInfiniteUserFeedsWithImages(userId: string | undefined) {
+  return useInfiniteQuery({
+    queryKey: ["user-feeds-with-images", userId],
+    enabled: !!userId,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }): Promise<FeedThumb[]> => {
+      let query = supabase
+        .from("feeds")
+        .select("id, image_url, created_at, linked_dive_id")
+        .eq("author_id", userId!)
+        .not("image_url", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(FEED_GRID_PAGE_SIZE);
+      if (pageParam) {
+        query = query.lt("created_at", pageParam);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const rows = (data ?? []) as unknown as Array<{
+        id: string;
+        image_url: string;
+        created_at: string;
+        linked_dive_id: string | null;
+      }>;
+
+      const linkedDiveIds = rows
+        .map((r) => r.linked_dive_id)
+        .filter((x): x is string => !!x);
+
+      const multiCount = new Map<string, number>();
+      if (linkedDiveIds.length > 0) {
+        const { data: mediaRows, error: mediaError } = await supabase
+          .from("dive_media")
+          .select("dive_id")
+          .in("dive_id", linkedDiveIds);
+        if (mediaError) throw mediaError;
+        for (const r of (mediaRows ?? []) as unknown as Array<{
+          dive_id: string;
+        }>) {
+          multiCount.set(r.dive_id, (multiCount.get(r.dive_id) ?? 0) + 1);
+        }
+      }
+
+      return rows.map((r) => ({
+        id: r.id,
+        imageUrl: r.image_url,
+        createdAt: r.created_at,
+        hasMultipleMedia: r.linked_dive_id
+          ? (multiCount.get(r.linked_dive_id) ?? 0) > 1
+          : false,
+      }));
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.length === FEED_GRID_PAGE_SIZE
+        ? lastPage[lastPage.length - 1].createdAt
+        : undefined,
+  });
+}
 
 export function useFeeds(currentUserId: string | undefined) {
   return useQuery({
@@ -141,6 +215,9 @@ export function useCreateFeed(currentUserId: string | undefined) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
+      qc.invalidateQueries({
+        queryKey: ["user-feeds-with-images", currentUserId],
+      });
     },
   });
 }
@@ -195,6 +272,9 @@ export function useUpdateFeed(currentUserId: string | undefined) {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
       qc.invalidateQueries({ queryKey: ["feed", variables.feedId] });
+      qc.invalidateQueries({
+        queryKey: ["user-feeds-with-images", currentUserId],
+      });
     },
   });
 }
@@ -224,6 +304,9 @@ export function useDeleteFeed(currentUserId: string | undefined) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
+      qc.invalidateQueries({
+        queryKey: ["user-feeds-with-images", currentUserId],
+      });
     },
   });
 }

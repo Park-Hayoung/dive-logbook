@@ -300,11 +300,11 @@ export default function NewLogScreen() {
           );
           try {
             let uploadUri = m.localUri;
-            let thumbnailUri: string | null = null;
+            let thumbnailLocalUri: string | null = null;
             if (m.kind === "video") {
               const compressed = await tryCompressVideo(m.localUri);
               uploadUri = compressed.uri;
-              thumbnailUri = compressed.thumbnailUri;
+              thumbnailLocalUri = compressed.thumbnailUri;
             }
             const uploaded = await mediaStorage.upload({
               scope: { type: "dive", diveId },
@@ -313,6 +313,23 @@ export default function NewLogScreen() {
               contentType: m.contentType,
               kind: m.kind,
             });
+            // 비디오 썸네일은 로컬 file:// 라서 그대로 DB에 넣으면 다른 사용자/세션에서 못 봄.
+            // 별도 이미지로 NAS 에 올리고 그 URL 을 저장.
+            let thumbnailPublicUrl: string | null = null;
+            if (m.kind === "video" && thumbnailLocalUri) {
+              try {
+                const thumbUploaded = await mediaStorage.upload({
+                  scope: { type: "dive", diveId },
+                  localUri: thumbnailLocalUri,
+                  originalFilename: `thumb-${Date.now()}.jpg`,
+                  contentType: "image/jpeg",
+                  kind: "image",
+                });
+                thumbnailPublicUrl = thumbUploaded.url;
+              } catch (te) {
+                console.warn("thumbnail upload failed", te);
+              }
+            }
             const { error: mediaError } = await supabase
               .from("dive_media")
               .insert({
@@ -322,7 +339,7 @@ export default function NewLogScreen() {
                 provider: uploaded.provider,
                 file_size_bytes: uploaded.sizeBytes,
                 original_filename: uploaded.filename,
-                thumbnail_url: thumbnailUri,
+                thumbnail_url: thumbnailPublicUrl,
                 duration_seconds: m.durationSeconds,
                 width: m.width,
                 height: m.height,

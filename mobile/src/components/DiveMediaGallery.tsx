@@ -7,11 +7,10 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
-  Linking,
   Dimensions,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { ImagePlus, Play, X, ExternalLink } from "lucide-react-native";
+import { ImagePlus, Play, X, Film } from "lucide-react-native";
 
 import {
   useDiveMedia,
@@ -20,6 +19,15 @@ import {
 import type { DiveMedia } from "@/src/types/dive";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
+import { VideoPlayerModal } from "@/src/components/VideoPlayerModal";
+
+// Legacy rows may have stored a device-local file:// URI in thumbnail_url.
+// That path won't exist on other devices/sessions — treat as missing.
+const safeThumb = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (url.startsWith("file://")) return null;
+  return url;
+};
 
 type Props = { diveId: string };
 
@@ -147,18 +155,27 @@ export function DiveMediaGallery({ diveId }: Props) {
           contentContainerStyle={{ gap: 8 }}
         >
           {media.map((m) => {
-            const thumb = m.thumbnailUrl ?? m.storageUrl;
+            const thumb =
+              m.kind === "image"
+                ? m.storageUrl
+                : safeThumb(m.thumbnailUrl);
             return (
               <Pressable
                 key={m.id}
                 onPress={() => setViewer(m)}
-                className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 active:opacity-70"
+                className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-200 active:opacity-70"
               >
-                <Image
-                  source={{ uri: thumb }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
+                {thumb ? (
+                  <Image
+                    source={{ uri: thumb }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View className="w-full h-full items-center justify-center bg-gray-300">
+                    <Film size={22} color="#6B7280" />
+                  </View>
+                )}
                 {m.kind === "video" ? (
                   <View className="absolute inset-0 items-center justify-center">
                     <View className="w-8 h-8 rounded-full bg-black/50 items-center justify-center">
@@ -186,6 +203,10 @@ function MediaViewerModal({
 }) {
   const { width, height } = Dimensions.get("window");
 
+  if (media?.kind === "video") {
+    return <VideoPlayerModal url={media.storageUrl} onClose={onClose} />;
+  }
+
   return (
     <Modal
       visible={!!media}
@@ -201,36 +222,12 @@ function MediaViewerModal({
         >
           <X size={22} color="#fff" />
         </Pressable>
-
         {media ? (
-          media.kind === "image" ? (
-            <Image
-              source={{ uri: media.storageUrl }}
-              style={{ width, height: height * 0.85 }}
-              resizeMode="contain"
-            />
-          ) : (
-            <View className="items-center gap-4 px-8">
-              <Image
-                source={{ uri: media.thumbnailUrl ?? media.storageUrl }}
-                style={{ width: width * 0.8, height: width * 0.8 }}
-                resizeMode="contain"
-                className="rounded-3xl"
-              />
-              <Pressable
-                onPress={() => Linking.openURL(media.storageUrl)}
-                className="flex-row items-center gap-2 bg-brand-600 px-5 py-3 rounded-2xl"
-              >
-                <ExternalLink size={16} color="#fff" />
-                <Text className="text-white font-black text-sm">
-                  영상 재생 (외부 앱)
-                </Text>
-              </Pressable>
-              <Text className="text-white/60 text-[10px] mt-2">
-                인앱 비디오 플레이어는 EAS Build에서 추가 예정
-              </Text>
-            </View>
-          )
+          <Image
+            source={{ uri: media.storageUrl }}
+            style={{ width, height: height * 0.85 }}
+            resizeMode="contain"
+          />
         ) : null}
       </View>
     </Modal>

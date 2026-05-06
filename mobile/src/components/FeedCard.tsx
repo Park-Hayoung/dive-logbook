@@ -13,6 +13,14 @@ import { Heart, MessageCircle, MapPin, Play } from "lucide-react-native";
 import type { FeedItem } from "@/src/hooks/use-feeds";
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
 
+// Legacy rows may have stored a device-local file:// URI as thumbnail_url —
+// won't load on other devices. Treat as missing.
+const safeThumb = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (url.startsWith("file://")) return null;
+  return url;
+};
+
 const formatRelative = (iso: string): string => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return "방금";
@@ -53,7 +61,10 @@ export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) 
     feed.linkedDiveId && diveMedia.length > 0
       ? diveMedia.map((m) => ({
           id: m.id,
-          url: m.thumbnailUrl ?? m.storageUrl,
+          url:
+            m.kind === "image"
+              ? m.storageUrl
+              : (safeThumb(m.thumbnailUrl) ?? ""),
           kind: m.kind,
         }))
       : feed.imageUrl

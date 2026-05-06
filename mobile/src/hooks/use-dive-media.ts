@@ -54,11 +54,33 @@ export type UploadInput = {
   kind: "image" | "video";
   contentType: string;
   originalFilename: string;
+  /** Local file:// URI of a poster frame extracted client-side (videos only). */
   thumbnailUri?: string | null;
   durationSeconds?: number | null;
   width?: number | null;
   height?: number | null;
 };
+
+// Upload a video poster as a separate image so the DB stores a public URL,
+// not a device-local file:// path.
+async function uploadThumbnail(
+  diveId: string,
+  thumbnailUri: string,
+): Promise<string | null> {
+  try {
+    const uploaded = await mediaStorage.upload({
+      scope: { type: "dive", diveId },
+      localUri: thumbnailUri,
+      originalFilename: `thumb-${Date.now()}.jpg`,
+      contentType: "image/jpeg",
+      kind: "image",
+    });
+    return uploaded.url;
+  } catch (e) {
+    console.warn("thumbnail upload failed", e);
+    return null;
+  }
+}
 
 export function useUploadDiveMedia(diveId: string | undefined) {
   const qc = useQueryClient();
@@ -74,6 +96,11 @@ export function useUploadDiveMedia(diveId: string | undefined) {
         kind: input.kind,
       });
 
+      const thumbnailUrl =
+        input.kind === "video" && input.thumbnailUri
+          ? await uploadThumbnail(diveId, input.thumbnailUri)
+          : null;
+
       const { error } = await supabase.from("dive_media").insert({
         dive_id: diveId,
         storage_url: uploaded.url,
@@ -81,7 +108,7 @@ export function useUploadDiveMedia(diveId: string | undefined) {
         provider: uploaded.provider,
         file_size_bytes: uploaded.sizeBytes,
         original_filename: uploaded.filename,
-        thumbnail_url: input.thumbnailUri ?? null,
+        thumbnail_url: thumbnailUrl,
         duration_seconds: input.durationSeconds ?? null,
         width: input.width ?? null,
         height: input.height ?? null,

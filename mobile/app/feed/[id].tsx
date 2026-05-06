@@ -38,6 +38,15 @@ import {
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
+import { VideoPlayerModal } from "@/src/components/VideoPlayerModal";
+
+// Legacy rows may have stored a device-local file:// URI as thumbnail_url —
+// won't load on other devices. Treat as missing.
+const safeThumb = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (url.startsWith("file://")) return null;
+  return url;
+};
 
 const formatRelative = (iso: string): string => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -65,6 +74,7 @@ export default function FeedDetailScreen() {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [feedImageRatio, setFeedImageRatio] = useState<number | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   // outer ScrollView padding 20*2 + 카드 p-5 (20*2) = 80
@@ -252,26 +262,37 @@ export default function FeedDetailScreen() {
                 className="mb-3"
               >
                 {diveMedia.map((m) => {
-                  const thumb = m.thumbnailUrl ?? m.storageUrl;
+                  const thumb =
+                    m.kind === "image"
+                      ? m.storageUrl
+                      : safeThumb(m.thumbnailUrl);
+                  const isVideo = m.kind === "video";
                   return (
-                    <View
+                    <Pressable
                       key={m.id}
+                      onPress={() =>
+                        isVideo ? setVideoUrl(m.storageUrl) : null
+                      }
                       style={{ width: carouselSize, height: carouselSize }}
                       className="rounded-2xl overflow-hidden bg-gray-100"
                     >
-                      <Image
-                        source={{ uri: thumb }}
-                        style={{ width: "100%", height: "100%" }}
-                        resizeMode="contain"
-                      />
-                      {m.kind === "video" ? (
+                      {thumb ? (
+                        <Image
+                          source={{ uri: thumb }}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View className="w-full h-full items-center justify-center bg-gray-300" />
+                      )}
+                      {isVideo ? (
                         <View className="absolute inset-0 items-center justify-center">
                           <View className="w-12 h-12 rounded-full bg-black/50 items-center justify-center">
                             <Play size={18} color="#fff" />
                           </View>
                         </View>
                       ) : null}
-                    </View>
+                    </Pressable>
                   );
                 })}
               </ScrollView>
@@ -432,6 +453,7 @@ export default function FeedDetailScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+      <VideoPlayerModal url={videoUrl} onClose={() => setVideoUrl(null)} />
     </SafeAreaView>
   );
 }

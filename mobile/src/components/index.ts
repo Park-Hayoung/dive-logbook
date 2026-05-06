@@ -8,3 +8,4 @@ export { ShopCard } from "./ShopCard";
 export { DateField, dateToYmd } from "./DateField";
 export { Avatar } from "./Avatar";
 export { AlertHost } from "./AlertHost";
+export { DiveMap, buildDiveMarkers, type DiveMarker } from "./DiveMap";

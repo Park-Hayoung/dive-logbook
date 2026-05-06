@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   Map as MapIcon,
+  MapPin,
   Navigation,
   ChevronRight,
   Plus,
@@ -24,7 +26,7 @@ import {
 } from "@/src/hooks/use-dive-schedules";
 import { useRecentNotificationCount } from "@/src/hooks/use-notifications";
 import { showAlert } from "@/src/lib/alert";
-import { LogCard, StatBox } from "@/src/components";
+import { DiveMap, LogCard, StatBox, buildDiveMarkers } from "@/src/components";
 
 const RECENT_LIMIT = 2;
 
@@ -113,6 +115,10 @@ export default function HomeScreen() {
   })();
 
   const recentDives = dives?.slice(0, RECENT_LIMIT) ?? [];
+  const mapMarkerCount = useMemo(
+    () => buildDiveMarkers(dives).length,
+    [dives],
+  );
   const totalDives = (profile?.total_dives_at_signup ?? 0) + stats.count;
   const totalHours = Math.floor(stats.totalMinutes / 60);
   const remainderMinutes = stats.totalMinutes % 60;
@@ -246,6 +252,36 @@ export default function HomeScreen() {
                       </View>
                     );
                   })}
+                </View>
+              </View>
+            ) : null}
+
+            {mapMarkerCount > 0 ? (
+              <View className="bg-white rounded-3xl mb-6 overflow-hidden border border-gray-100">
+                <Pressable
+                  onPress={() => router.push("/map" as never)}
+                  className="px-5 pt-5 pb-3 flex-row items-center justify-between"
+                >
+                  <View className="flex-row items-center gap-1.5">
+                    <MapPin size={12} color="#6B7280" />
+                    <Text className="text-[10px] font-black text-gray-400 uppercase">
+                      방문한 다이브 포인트
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-1">
+                    <Text className="text-[10px] font-bold text-gray-500">
+                      {mapMarkerCount}곳
+                    </Text>
+                    <ChevronRight size={12} color="#9CA3AF" />
+                  </View>
+                </Pressable>
+                <View className="px-3 pb-3">
+                  <DiveMap
+                    dives={dives}
+                    height={180}
+                    interactive={false}
+                    onPress={() => router.push("/map" as never)}
+                  />
                 </View>
               </View>
             ) : null}

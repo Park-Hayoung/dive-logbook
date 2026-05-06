@@ -95,6 +95,7 @@ function RootGuard() {
       <Stack.Screen name="search" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="map" />
       <Stack.Screen name="shop/search" />
       <Stack.Screen name="shop/[id]" />
       <Stack.Screen name="equipment/index" />

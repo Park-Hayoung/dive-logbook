@@ -1,39 +1,22 @@
 import { useMemo } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  Award,
-  Navigation,
-  Clock,
-  BarChart3,
-  Camera,
-  ShieldCheck,
-  Globe,
-  Settings,
-} from "lucide-react-native";
+import { Award, Camera, Settings } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
 import { useProfile } from "@/src/hooks/use-profile";
-import { useDives } from "@/src/hooks/use-dives";
 import { useFollowCounts } from "@/src/hooks/use-follows";
 import { useInfiniteUserFeedsWithImages } from "@/src/hooks/use-feeds";
-import { StatBox, Avatar, FeedGrid } from "@/src/components";
+import { Avatar, FeedGrid } from "@/src/components";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const userId = user?.id;
 
-  const { data: profile, isLoading: isProfileLoading } = useProfile(userId);
-  const { data: dives, isLoading: isDivesLoading } = useDives(userId);
+  const { data: profile } = useProfile(userId);
   const { data: followCounts } = useFollowCounts(userId);
 
   const {
@@ -48,46 +31,6 @@ export default function ProfileScreen() {
     () => feedPages?.pages.flatMap((p) => p) ?? [],
     [feedPages],
   );
-
-  const stats = (() => {
-    if (!dives || dives.length === 0) {
-      return {
-        count: 0,
-        verifiedCount: 0,
-        maxDepth: 0,
-        totalMinutes: 0,
-        countries: [] as Array<{ country: string; count: number }>,
-      };
-    }
-    const countryCounts = new Map<string, number>();
-    let verifiedCount = 0;
-    let maxDepth = 0;
-    let totalMinutes = 0;
-    for (const d of dives) {
-      const c = d.country.trim();
-      if (c) countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
-      if (d.isVerified) verifiedCount += 1;
-      if (d.maxDepth > maxDepth) maxDepth = d.maxDepth;
-      totalMinutes += d.durationMinutes;
-    }
-    const countries = [...countryCounts.entries()]
-      .map(([country, count]) => ({ country, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-    return {
-      count: dives.length,
-      verifiedCount,
-      maxDepth,
-      totalMinutes,
-      countries,
-    };
-  })();
-
-  const totalDives = (profile?.total_dives_at_signup ?? 0) + stats.count;
-  const totalHours = Math.floor(stats.totalMinutes / 60);
-  const remainderMinutes = stats.totalMinutes % 60;
-
-  const isLoading = isProfileLoading || isDivesLoading;
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!hasNextPage || isFetchingNextPage) return;
@@ -182,104 +125,6 @@ export default function ProfileScreen() {
             </Text>
           ) : null}
         </View>
-
-        <Text className="text-[10px] font-black text-gray-400 uppercase mb-2 px-1">
-          활동 요약
-        </Text>
-
-        {isLoading ? (
-          <View className="bg-white p-8 rounded-3xl items-center mb-4">
-            <ActivityIndicator />
-          </View>
-        ) : (
-          <>
-            <View className="flex-row gap-2 mb-2">
-              <View className="flex-1">
-                <StatBox
-                  label="총 다이브"
-                  value={totalDives}
-                  unit="회"
-                  highlighted
-                  icon={<BarChart3 size={10} color="#DBEAFE" />}
-                />
-              </View>
-              <View className="flex-1">
-                <StatBox
-                  label="인증"
-                  value={stats.verifiedCount}
-                  unit="회"
-                  icon={<ShieldCheck size={10} color="#9CA3AF" />}
-                />
-              </View>
-            </View>
-
-            <View className="flex-row gap-2 mb-4">
-              <View className="flex-1">
-                <StatBox
-                  label="최대 수심"
-                  value={stats.maxDepth ? stats.maxDepth.toFixed(1) : "—"}
-                  unit={stats.maxDepth ? "m" : ""}
-                  icon={<Navigation size={10} color="#9CA3AF" />}
-                />
-              </View>
-              <View className="flex-1">
-                <StatBox
-                  label="총 시간"
-                  value={
-                    stats.totalMinutes
-                      ? totalHours > 0
-                        ? `${totalHours}:${String(remainderMinutes).padStart(2, "0")}`
-                        : `${remainderMinutes}`
-                      : "—"
-                  }
-                  unit={
-                    stats.totalMinutes
-                      ? totalHours > 0
-                        ? "h"
-                        : "분"
-                      : ""
-                  }
-                  icon={<Clock size={10} color="#9CA3AF" />}
-                />
-              </View>
-            </View>
-
-            {stats.countries.length > 0 ? (
-              <View className="bg-white p-5 rounded-3xl mb-4">
-                <View className="flex-row items-center gap-1.5 mb-3">
-                  <Globe size={12} color="#6B7280" />
-                  <Text className="text-[10px] font-black text-gray-400 uppercase">
-                    주 방문 국가
-                  </Text>
-                </View>
-                <View className="gap-3">
-                  {stats.countries.map((c) => {
-                    const pct = Math.round((c.count / stats.count) * 100);
-                    return (
-                      <View key={c.country} className="gap-1">
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-bold text-gray-700">
-                            {c.country}
-                          </Text>
-                          <Text className="text-xs text-gray-500">
-                            {c.count}회 · {pct}%
-                          </Text>
-                        </View>
-                        <View className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <View
-                            className="h-full bg-brand-500 rounded-full"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : null}
-          </>
-        )}
-
        </View>
 
         <FeedGrid

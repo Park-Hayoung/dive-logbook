@@ -4,12 +4,15 @@ import { useRouter } from "expo-router";
 import {
   Map as MapIcon,
   Navigation,
-  CalendarClock,
   ChevronRight,
   Plus,
   CalendarDays,
   Trash2,
   Bell,
+  BarChart3,
+  ShieldCheck,
+  Clock,
+  Globe,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -24,7 +27,6 @@ import { showAlert } from "@/src/lib/alert";
 import { LogCard, StatBox } from "@/src/components";
 
 const RECENT_LIMIT = 2;
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 const formatDateRange = (start: string, end: string): string => {
   if (start === end) return formatYmd(start);
@@ -76,24 +78,44 @@ export default function HomeScreen() {
   const deleteSchedule = useDeleteDiveSchedule(userId);
   const { count: notifCount } = useRecentNotificationCount(userId);
 
-  const summary = (() => {
+  const stats = (() => {
     if (!dives || dives.length === 0) {
-      return { total: 0, recent30: 0, maxDepth: 0 };
+      return {
+        count: 0,
+        verifiedCount: 0,
+        maxDepth: 0,
+        totalMinutes: 0,
+        countries: [] as Array<{ country: string; count: number }>,
+      };
     }
-    const since = Date.now() - THIRTY_DAYS_MS;
-    return dives.reduce(
-      (acc, d) => ({
-        total: acc.total + 1,
-        recent30:
-          acc.recent30 + (new Date(d.startedAt).getTime() >= since ? 1 : 0),
-        maxDepth: Math.max(acc.maxDepth, d.maxDepth),
-      }),
-      { total: 0, recent30: 0, maxDepth: 0 },
-    );
+    const countryCounts = new Map<string, number>();
+    let verifiedCount = 0;
+    let maxDepth = 0;
+    let totalMinutes = 0;
+    for (const d of dives) {
+      const c = d.country.trim();
+      if (c) countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
+      if (d.isVerified) verifiedCount += 1;
+      if (d.maxDepth > maxDepth) maxDepth = d.maxDepth;
+      totalMinutes += d.durationMinutes;
+    }
+    const countries = [...countryCounts.entries()]
+      .map(([country, count]) => ({ country, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    return {
+      count: dives.length,
+      verifiedCount,
+      maxDepth,
+      totalMinutes,
+      countries,
+    };
   })();
 
   const recentDives = dives?.slice(0, RECENT_LIMIT) ?? [];
-  const totalDives = (profile?.total_dives_at_signup ?? 0) + summary.total;
+  const totalDives = (profile?.total_dives_at_signup ?? 0) + stats.count;
+  const totalHours = Math.floor(stats.totalMinutes / 60);
+  const remainderMinutes = stats.totalMinutes % 60;
 
   const onDeleteSchedule = (id: string, title: string) => {
     showAlert("일정 삭제", `"${title}"을(를) 삭제하시겠어요?`, [
@@ -137,32 +159,98 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View className="flex-row gap-2 mb-6">
-          <View className="flex-1">
-            <StatBox
-              label="총 다이브"
-              value={totalDives}
-              unit="회"
-              highlighted
-            />
+        {isLoading ? (
+          <View className="bg-white p-8 rounded-3xl items-center mb-6">
+            <ActivityIndicator />
           </View>
-          <View className="flex-1">
-            <StatBox
-              label="최근 30일"
-              value={summary.recent30}
-              unit="회"
-              icon={<CalendarClock size={10} color="#9CA3AF" />}
-            />
-          </View>
-          <View className="flex-1">
-            <StatBox
-              label="최대 수심"
-              value={summary.maxDepth ? summary.maxDepth.toFixed(1) : "—"}
-              unit={summary.maxDepth ? "m" : ""}
-              icon={<Navigation size={10} color="#9CA3AF" />}
-            />
-          </View>
-        </View>
+        ) : (
+          <>
+            <View className="flex-row gap-2 mb-2">
+              <View className="flex-1">
+                <StatBox
+                  label="총 다이브"
+                  value={totalDives}
+                  unit="회"
+                  highlighted
+                  icon={<BarChart3 size={10} color="#DBEAFE" />}
+                />
+              </View>
+              <View className="flex-1">
+                <StatBox
+                  label="인증"
+                  value={stats.verifiedCount}
+                  unit="회"
+                  icon={<ShieldCheck size={10} color="#9CA3AF" />}
+                />
+              </View>
+            </View>
+
+            <View className="flex-row gap-2 mb-4">
+              <View className="flex-1">
+                <StatBox
+                  label="최대 수심"
+                  value={stats.maxDepth ? stats.maxDepth.toFixed(1) : "—"}
+                  unit={stats.maxDepth ? "m" : ""}
+                  icon={<Navigation size={10} color="#9CA3AF" />}
+                />
+              </View>
+              <View className="flex-1">
+                <StatBox
+                  label="총 시간"
+                  value={
+                    stats.totalMinutes
+                      ? totalHours > 0
+                        ? `${totalHours}:${String(remainderMinutes).padStart(2, "0")}`
+                        : `${remainderMinutes}`
+                      : "—"
+                  }
+                  unit={
+                    stats.totalMinutes
+                      ? totalHours > 0
+                        ? "h"
+                        : "분"
+                      : ""
+                  }
+                  icon={<Clock size={10} color="#9CA3AF" />}
+                />
+              </View>
+            </View>
+
+            {stats.countries.length > 0 ? (
+              <View className="bg-white p-5 rounded-3xl mb-6">
+                <View className="flex-row items-center gap-1.5 mb-3">
+                  <Globe size={12} color="#6B7280" />
+                  <Text className="text-[10px] font-black text-gray-400 uppercase">
+                    주 방문 국가
+                  </Text>
+                </View>
+                <View className="gap-3">
+                  {stats.countries.map((c) => {
+                    const pct = Math.round((c.count / stats.count) * 100);
+                    return (
+                      <View key={c.country} className="gap-1">
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm font-bold text-gray-700">
+                            {c.country}
+                          </Text>
+                          <Text className="text-xs text-gray-500">
+                            {c.count}회 · {pct}%
+                          </Text>
+                        </View>
+                        <View className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <View
+                            className="h-full bg-brand-500 rounded-full"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+          </>
+        )}
 
         <Pressable
           onPress={() => router.push("/shop/search")}

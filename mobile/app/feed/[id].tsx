@@ -9,6 +9,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -63,6 +64,11 @@ export default function FeedDetailScreen() {
 
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
+  const [feedImageRatio, setFeedImageRatio] = useState<number | null>(null);
+
+  const { width: screenWidth } = useWindowDimensions();
+  // outer ScrollView padding 20*2 + 카드 p-5 (20*2) = 80
+  const carouselSize = Math.max(0, screenWidth - 80);
 
   const onSubmit = async () => {
     const trimmed = draft.trim();
@@ -239,8 +245,10 @@ export default function FeedDetailScreen() {
             {feed.linkedDiveId && diveMedia.length > 0 ? (
               <ScrollView
                 horizontal
+                pagingEnabled
+                snapToInterval={carouselSize}
+                decelerationRate="fast"
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8 }}
                 className="mb-3"
               >
                 {diveMedia.map((m) => {
@@ -248,17 +256,18 @@ export default function FeedDetailScreen() {
                   return (
                     <View
                       key={m.id}
-                      className="w-56 h-56 rounded-2xl overflow-hidden bg-gray-100"
+                      style={{ width: carouselSize, height: carouselSize }}
+                      className="rounded-2xl overflow-hidden bg-gray-100"
                     >
                       <Image
                         source={{ uri: thumb }}
-                        className="w-full h-full"
-                        resizeMode="cover"
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="contain"
                       />
                       {m.kind === "video" ? (
                         <View className="absolute inset-0 items-center justify-center">
-                          <View className="w-10 h-10 rounded-full bg-black/50 items-center justify-center">
-                            <Play size={16} color="#fff" />
+                          <View className="w-12 h-12 rounded-full bg-black/50 items-center justify-center">
+                            <Play size={18} color="#fff" />
                           </View>
                         </View>
                       ) : null}
@@ -269,7 +278,15 @@ export default function FeedDetailScreen() {
             ) : feed.imageUrl ? (
               <Image
                 source={{ uri: feed.imageUrl }}
-                className="w-full h-56 rounded-2xl mb-3"
+                onLoad={(e) => {
+                  const { width, height } = e.nativeEvent.source;
+                  if (width && height) setFeedImageRatio(width / height);
+                }}
+                style={{
+                  width: "100%",
+                  aspectRatio: feedImageRatio ?? 4 / 3,
+                }}
+                className="rounded-2xl mb-3 bg-gray-100"
                 resizeMode="cover"
               />
             ) : null}
@@ -288,7 +305,7 @@ export default function FeedDetailScreen() {
               >
                 <Anchor size={12} color="#2563EB" />
                 <Text className="text-xs font-bold text-brand-700">
-                  연결된 다이브 보기
+                  연결된 로그 보기
                 </Text>
               </Pressable>
             ) : null}

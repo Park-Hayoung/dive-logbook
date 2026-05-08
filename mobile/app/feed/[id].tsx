@@ -22,7 +22,6 @@ import {
   Anchor,
   Pencil,
   Trash2,
-  Play,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -39,14 +38,7 @@ import { useDiveMedia } from "@/src/hooks/use-dive-media";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 import { VideoPlayerModal } from "@/src/components/VideoPlayerModal";
-
-// Legacy rows may have stored a device-local file:// URI as thumbnail_url —
-// won't load on other devices. Treat as missing.
-const safeThumb = (url: string | null | undefined): string | null => {
-  if (!url) return null;
-  if (url.startsWith("file://")) return null;
-  return url;
-};
+import { VideoThumb } from "@/src/components/VideoThumb";
 
 const formatRelative = (iso: string): string => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -262,10 +254,6 @@ export default function FeedDetailScreen() {
                 className="mb-3"
               >
                 {diveMedia.map((m) => {
-                  const thumb =
-                    m.kind === "image"
-                      ? m.storageUrl
-                      : safeThumb(m.thumbnailUrl);
                   const isVideo = m.kind === "video";
                   return (
                     <Pressable
@@ -276,22 +264,20 @@ export default function FeedDetailScreen() {
                       style={{ width: carouselSize, height: carouselSize }}
                       className="rounded-2xl overflow-hidden bg-gray-100"
                     >
-                      {thumb ? (
+                      {isVideo ? (
+                        <VideoThumb
+                          videoUrl={m.storageUrl}
+                          thumbnailUrl={m.thumbnailUrl}
+                          resizeMode="contain"
+                          style={{ width: "100%", height: "100%" }}
+                        />
+                      ) : (
                         <Image
-                          source={{ uri: thumb }}
+                          source={{ uri: m.storageUrl }}
                           style={{ width: "100%", height: "100%" }}
                           resizeMode="contain"
                         />
-                      ) : (
-                        <View className="w-full h-full items-center justify-center bg-gray-300" />
                       )}
-                      {isVideo ? (
-                        <View className="absolute inset-0 items-center justify-center">
-                          <View className="w-12 h-12 rounded-full bg-black/50 items-center justify-center">
-                            <Play size={18} color="#fff" />
-                          </View>
-                        </View>
-                      ) : null}
                     </Pressable>
                   );
                 })}

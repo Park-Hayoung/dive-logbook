@@ -8,18 +8,11 @@ import {
   Dimensions,
 } from "react-native";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
-import { Heart, MessageCircle, MapPin, Play } from "lucide-react-native";
+import { Heart, MessageCircle, MapPin } from "lucide-react-native";
 
 import type { FeedItem } from "@/src/hooks/use-feeds";
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
-
-// Legacy rows may have stored a device-local file:// URI as thumbnail_url —
-// won't load on other devices. Treat as missing.
-const safeThumb = (url: string | null | undefined): string | null => {
-  if (!url) return null;
-  if (url.startsWith("file://")) return null;
-  return url;
-};
+import { VideoThumb } from "@/src/components/VideoThumb";
 
 const formatRelative = (iso: string): string => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -48,6 +41,7 @@ type CarouselItem = {
   id: string;
   url: string;
   kind: "image" | "video";
+  thumbnailUrl: string | null;
 };
 
 export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) {
@@ -61,14 +55,19 @@ export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) 
     feed.linkedDiveId && diveMedia.length > 0
       ? diveMedia.map((m) => ({
           id: m.id,
-          url:
-            m.kind === "image"
-              ? m.storageUrl
-              : (safeThumb(m.thumbnailUrl) ?? ""),
+          url: m.storageUrl,
           kind: m.kind,
+          thumbnailUrl: m.thumbnailUrl,
         }))
       : feed.imageUrl
-        ? [{ id: "feed-image", url: feed.imageUrl, kind: "image" }]
+        ? [
+            {
+              id: "feed-image",
+              url: feed.imageUrl,
+              kind: "image",
+              thumbnailUrl: null,
+            },
+          ]
         : [];
 
   const [page, setPage] = useState(0);
@@ -129,18 +128,19 @@ export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) 
           style={{ width: "100%", height: MEDIA_HEIGHT, marginBottom: 12 }}
           className="bg-gray-100"
         >
-          <Image
-            source={{ uri: items[0].url }}
-            style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
-          />
           {items[0].kind === "video" ? (
-            <View className="absolute inset-0 items-center justify-center">
-              <View className="w-12 h-12 rounded-full bg-black/50 items-center justify-center">
-                <Play size={18} color="#fff" />
-              </View>
-            </View>
-          ) : null}
+            <VideoThumb
+              videoUrl={items[0].url}
+              thumbnailUrl={items[0].thumbnailUrl}
+              style={{ width: "100%", height: "100%" }}
+            />
+          ) : (
+            <Image
+              source={{ uri: items[0].url }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          )}
         </View>
       ) : items.length > 1 ? (
         <View className="mb-3">
@@ -157,18 +157,19 @@ export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) 
                 style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT }}
                 className="bg-gray-100"
               >
-                <Image
-                  source={{ uri: m.url }}
-                  style={{ width: "100%", height: "100%" }}
-                  resizeMode="cover"
-                />
                 {m.kind === "video" ? (
-                  <View className="absolute inset-0 items-center justify-center">
-                    <View className="w-12 h-12 rounded-full bg-black/50 items-center justify-center">
-                      <Play size={18} color="#fff" />
-                    </View>
-                  </View>
-                ) : null}
+                  <VideoThumb
+                    videoUrl={m.url}
+                    thumbnailUrl={m.thumbnailUrl}
+                    style={{ width: "100%", height: "100%" }}
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: m.url }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                  />
+                )}
               </View>
             ))}
           </ScrollView>

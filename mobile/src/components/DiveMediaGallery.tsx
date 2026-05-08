@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { ImagePlus, Play, X, Film } from "lucide-react-native";
+import { ImagePlus, X } from "lucide-react-native";
 
 import {
   useDiveMedia,
@@ -20,14 +20,7 @@ import type { DiveMedia } from "@/src/types/dive";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 import { VideoPlayerModal } from "@/src/components/VideoPlayerModal";
-
-// Legacy rows may have stored a device-local file:// URI in thumbnail_url.
-// That path won't exist on other devices/sessions — treat as missing.
-const safeThumb = (url: string | null | undefined): string | null => {
-  if (!url) return null;
-  if (url.startsWith("file://")) return null;
-  return url;
-};
+import { VideoThumb } from "@/src/components/VideoThumb";
 
 type Props = { diveId: string };
 
@@ -154,38 +147,28 @@ export function DiveMediaGallery({ diveId }: Props) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8 }}
         >
-          {media.map((m) => {
-            const thumb =
-              m.kind === "image"
-                ? m.storageUrl
-                : safeThumb(m.thumbnailUrl);
-            return (
-              <Pressable
-                key={m.id}
-                onPress={() => setViewer(m)}
-                className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-200 active:opacity-70"
-              >
-                {thumb ? (
-                  <Image
-                    source={{ uri: thumb }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View className="w-full h-full items-center justify-center bg-gray-300">
-                    <Film size={22} color="#6B7280" />
-                  </View>
-                )}
-                {m.kind === "video" ? (
-                  <View className="absolute inset-0 items-center justify-center">
-                    <View className="w-8 h-8 rounded-full bg-black/50 items-center justify-center">
-                      <Play size={14} color="#fff" />
-                    </View>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          })}
+          {media.map((m) => (
+            <Pressable
+              key={m.id}
+              onPress={() => setViewer(m)}
+              className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-200 active:opacity-70"
+            >
+              {m.kind === "video" ? (
+                <VideoThumb
+                  videoUrl={m.storageUrl}
+                  thumbnailUrl={m.thumbnailUrl}
+                  style={{ width: "100%", height: "100%" }}
+                  playIconSize={14}
+                />
+              ) : (
+                <Image
+                  source={{ uri: m.storageUrl }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              )}
+            </Pressable>
+          ))}
         </ScrollView>
       )}
 

@@ -17,6 +17,9 @@ node_modules/
 # Expo auto-generated dev state (any subproject)
 .expo/
 
+# Supabase CLI cache (linked-project, cli-latest)
+supabase/.temp/
+
 # Build outputs
 dist/
 build/

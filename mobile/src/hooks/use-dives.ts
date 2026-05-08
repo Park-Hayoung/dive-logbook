@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/src/services/supabase";
-import type { Dive, Weather } from "@/src/types/dive";
+import type { TablesUpdate } from "@/src/types/database";
+import type {
+  Dive,
+  Weather,
+  EntryType,
+  CurrentStrength,
+  WaterType,
+} from "@/src/types/dive";
 
 type DiveRow = {
   id: string;
@@ -9,8 +16,8 @@ type DiveRow = {
   country: string;
   location: string;
   point: string | null;
-  lat: number | null;
-  lng: number | null;
+  lat: number | string | null;
+  lng: number | string | null;
   place_id: string | null;
   started_at: string;
   ended_at: string;
@@ -26,6 +33,22 @@ type DiveRow = {
   raw_binary_url: string | null;
   thumbnail_url: string | null;
   created_at: string;
+  dive_mode: string | null;
+  entry_type: string | null;
+  dive_style: string[] | null;
+  current_strength: string | null;
+  surface_interval_min: number | null;
+  gf_low: number | null;
+  gf_high: number | null;
+  deco_model: string | null;
+  atmospheric_mbar: number | null;
+  water_type: string | null;
+  tank_start_bar: number | string | null;
+  tank_end_bar: number | string | null;
+  tank_volume_l: number | string | null;
+  tank_serial: string | null;
+  consumption_bar_per_min: number | string | null;
+  sac_l_per_min: number | string | null;
 };
 
 const WEATHER_MAP: Record<string, Weather> = {
@@ -40,6 +63,9 @@ const toNumber = (v: number | string | null): number => {
   return typeof v === "number" ? v : Number(v);
 };
 
+const numOrNull = (v: number | string | null): number | null =>
+  v === null ? null : typeof v === "number" ? v : Number(v);
+
 const mapDive = (row: DiveRow): Dive => ({
   id: row.id,
   userId: row.user_id,
@@ -47,8 +73,8 @@ const mapDive = (row: DiveRow): Dive => ({
   country: row.country,
   location: row.location,
   point: row.point ?? "",
-  lat: row.lat,
-  lng: row.lng,
+  lat: numOrNull(row.lat),
+  lng: numOrNull(row.lng),
   placeId: row.place_id,
   startedAt: row.started_at,
   endedAt: row.ended_at,
@@ -64,6 +90,22 @@ const mapDive = (row: DiveRow): Dive => ({
   rawBinaryUrl: row.raw_binary_url,
   thumbnailUrl: row.thumbnail_url,
   createdAt: row.created_at,
+  diveMode: row.dive_mode,
+  entryType: (row.entry_type as EntryType | null) ?? null,
+  diveStyle: row.dive_style,
+  currentStrength: (row.current_strength as CurrentStrength | null) ?? null,
+  surfaceIntervalMin: row.surface_interval_min,
+  gfLow: row.gf_low,
+  gfHigh: row.gf_high,
+  decoModel: row.deco_model,
+  atmosphericMbar: row.atmospheric_mbar,
+  waterType: (row.water_type as WaterType | null) ?? null,
+  tankStartBar: numOrNull(row.tank_start_bar),
+  tankEndBar: numOrNull(row.tank_end_bar),
+  tankVolumeL: numOrNull(row.tank_volume_l),
+  tankSerial: row.tank_serial,
+  consumptionBarPerMin: numOrNull(row.consumption_bar_per_min),
+  sacLPerMin: numOrNull(row.sac_l_per_min),
 });
 
 export function useDives(userId: string | undefined) {
@@ -103,22 +145,32 @@ export function useDive(diveId: string | undefined) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type UpdateDiveInput = {
+  // Always user-editable
   country: string;
   location: string;
   point: string | null;
   lat: number | null;
   lng: number | null;
   placeId: string | null;
-  startedAt: string;
-  endedAt: string;
-  maxDepth: number;
-  avgDepth: number | null;
-  waterTemp: number | null;
   visibility: number | null;
   weather: "sunny" | "cloudy" | "rainy" | "night";
   memo: string | null;
+  entryType: EntryType | null;
+  diveStyle: string[] | null;
+  currentStrength: CurrentStrength | null;
+  surfaceIntervalMin: number | null;
+  tankVolumeL: number | null;
   // 사용자 보유 장비 ID 배열 — 전체 교체 (delete + insert).
   userEquipmentIds: string[];
+  // BLE-locked fields. Caller omits these when is_verified=true so they can't
+  // be tampered with. The server-side trigger (012) is the authoritative gate.
+  startedAt?: string;
+  endedAt?: string;
+  maxDepth?: number;
+  avgDepth?: number | null;
+  waterTemp?: number | null;
+  tankStartBar?: number | null;
+  tankEndBar?: number | null;
 };
 
 export function useUpdateDive(userId: string | undefined) {
@@ -128,24 +180,37 @@ export function useUpdateDive(userId: string | undefined) {
       if (!userId) throw new Error("로그인이 필요해요.");
       const { diveId, patch } = args;
 
+      const updateRow: TablesUpdate<"dives"> = {
+        country: patch.country,
+        location: patch.location,
+        point: patch.point,
+        lat: patch.lat,
+        lng: patch.lng,
+        place_id: patch.placeId,
+        visibility: patch.visibility,
+        weather: patch.weather,
+        memo: patch.memo,
+        entry_type: patch.entryType,
+        dive_style: patch.diveStyle,
+        current_strength: patch.currentStrength,
+        surface_interval_min: patch.surfaceIntervalMin,
+        tank_volume_l: patch.tankVolumeL,
+      };
+      // Only write BLE-locked columns if caller supplied them (i.e. dive was
+      // not BLE-imported). Trigger 012 will reject if the row is verified.
+      if (patch.startedAt !== undefined) updateRow.started_at = patch.startedAt;
+      if (patch.endedAt !== undefined) updateRow.ended_at = patch.endedAt;
+      if (patch.maxDepth !== undefined) updateRow.max_depth = patch.maxDepth;
+      if (patch.avgDepth !== undefined) updateRow.avg_depth = patch.avgDepth;
+      if (patch.waterTemp !== undefined) updateRow.water_temp = patch.waterTemp;
+      if (patch.tankStartBar !== undefined)
+        updateRow.tank_start_bar = patch.tankStartBar;
+      if (patch.tankEndBar !== undefined)
+        updateRow.tank_end_bar = patch.tankEndBar;
+
       const { error } = await supabase
         .from("dives")
-        .update({
-          country: patch.country,
-          location: patch.location,
-          point: patch.point,
-          lat: patch.lat,
-          lng: patch.lng,
-          place_id: patch.placeId,
-          started_at: patch.startedAt,
-          ended_at: patch.endedAt,
-          max_depth: patch.maxDepth,
-          avg_depth: patch.avgDepth,
-          water_temp: patch.waterTemp,
-          visibility: patch.visibility,
-          weather: patch.weather,
-          memo: patch.memo,
-        })
+        .update(updateRow)
         .eq("id", diveId)
         .eq("user_id", userId);
       if (error) throw new Error(error.message || JSON.stringify(error));
@@ -246,6 +311,138 @@ export function useDiveUserEquipment(diveId: string | undefined) {
       return ((data ?? []) as unknown as { user_equipment_id: string }[]).map(
         (r) => r.user_equipment_id,
       );
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLE Import — Shearwater PNF dives → Supabase
+// ─────────────────────────────────────────────────────────────────────────────
+
+import type { ParsedDive } from "@/src/services/ble";
+
+export type ImportDiveInput = {
+  parsed: ParsedDive;
+  diveNumber: number; // from manifest fingerprint
+};
+
+export type ImportResult = {
+  inserted: number;
+  skipped: number;
+  skippedNumbers: number[];
+};
+
+export function useImportPnfDives(userId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: ImportDiveInput[]): Promise<ImportResult> => {
+      if (!userId) throw new Error("로그인이 필요해요.");
+      const result: ImportResult = { inserted: 0, skipped: 0, skippedNumbers: [] };
+
+      // Pre-fetch existing dive_numbers to skip duplicates without round-tripping.
+      const { data: existing, error: exErr } = await supabase
+        .from("dives")
+        .select("dive_number")
+        .eq("user_id", userId);
+      if (exErr) throw new Error(exErr.message);
+      const taken = new Set(
+        ((existing ?? []) as { dive_number: number }[]).map((r) => r.dive_number),
+      );
+
+      for (const { parsed, diveNumber } of items) {
+        if (taken.has(diveNumber)) {
+          result.skipped++;
+          result.skippedNumbers.push(diveNumber);
+          continue;
+        }
+
+        const startedAt = new Date(parsed.timestamp * 1000).toISOString();
+        const endSec =
+          parsed.timestamp + (parsed.durationS ?? Math.round(parsed.samples.length * (parsed.sampleIntervalMs / 1000)));
+        const endedAt = new Date(endSec * 1000).toISOString();
+
+        const { data: ins, error: insErr } = await supabase
+          .from("dives")
+          .insert({
+            user_id: userId,
+            dive_number: diveNumber,
+            country: "",
+            location: "",
+            point: null,
+            lat: parsed.latitude ?? null,
+            lng: parsed.longitude ?? null,
+            started_at: startedAt,
+            ended_at: endedAt,
+            max_depth: parsed.maxDepthM ?? 0,
+            avg_depth: parsed.avgDepthM ?? null,
+            water_temp: parsed.minTempC ?? null,
+            visibility: null,
+            weather: null,
+            memo: null,
+            is_verified: true,
+            device_serial: parsed.deviceSerial?.toString() ?? null,
+            raw_binary_url: null,
+            dive_mode: parsed.diveMode,
+            gf_low: parsed.gfLow,
+            gf_high: parsed.gfHigh,
+            deco_model: parsed.decoModel,
+            atmospheric_mbar: parsed.atmosphericMbar,
+            water_type: parsed.waterType,
+            tank_start_bar: parsed.startPressureBar ?? null,
+            tank_end_bar: parsed.endPressureBar ?? null,
+            consumption_bar_per_min: parsed.consumptionBarPerMin ?? null,
+          })
+          .select("id")
+          .single();
+        if (insErr) throw new Error(insErr.message);
+        const diveId = (ins as { id: string }).id;
+
+        // Gas mixes
+        if (parsed.gasMixes.length > 0) {
+          const gasRows = parsed.gasMixes.map((g) => ({
+            dive_id: diveId,
+            mix_index: g.index,
+            o2_pct: g.o2,
+            he_pct: g.he,
+            is_diluent: g.diluent,
+          }));
+          const { error: gErr } = await supabase
+            .from("dive_gas_mixes")
+            .insert(gasRows);
+          if (gErr) throw new Error(gErr.message);
+        }
+
+        // Samples — batch in chunks of 500 to stay under request size limits.
+        if (parsed.samples.length > 0) {
+          const sampleRows = parsed.samples.map((s) => ({
+            dive_id: diveId,
+            time_s: Math.round(s.timeS),
+            depth_m: s.depthM,
+            temp_c: s.tempC,
+            ndl_deco_min: s.ndlDecoMin,
+            tts_min: s.ttsMin,
+            deco_stop_m: s.decoStopM,
+            tank0_bar: s.tank0Bar,
+            tank1_bar: s.tank1Bar,
+            cns: s.cns,
+          }));
+          for (let i = 0; i < sampleRows.length; i += 500) {
+            const chunk = sampleRows.slice(i, i + 500);
+            const { error: sErr } = await supabase
+              .from("dive_samples")
+              .insert(chunk);
+            if (sErr) throw new Error(sErr.message);
+          }
+        }
+
+        result.inserted++;
+        taken.add(diveNumber);
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dives", userId] });
     },
   });
 }

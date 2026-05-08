@@ -18,6 +18,10 @@ import {
   ImagePlus,
   Video as VideoIcon,
   Play,
+  Ship,
+  Waves,
+  Anchor,
+  Wind,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,11 +53,45 @@ type FieldKey =
   | "waterTemp"
   | "visibility"
   | "durationMinutes"
-  | "memo";
+  | "memo"
+  | "tankVolumeL"
+  | "tankStartBar"
+  | "tankEndBar"
+  | "surfaceIntervalMin";
 
 type FormState = Record<FieldKey, string>;
 
 type WeatherCode = "sunny" | "cloudy" | "rainy" | "night";
+
+type EntryType = "boat" | "shore" | "liveaboard";
+type CurrentStrength = "none" | "mild" | "moderate" | "strong";
+
+const ENTRY_TYPE_OPTIONS: ReadonlyArray<{
+  code: EntryType;
+  label: string;
+  Icon: typeof Sun;
+}> = [
+  { code: "boat", label: "보트", Icon: Ship },
+  { code: "shore", label: "비치", Icon: Waves },
+  { code: "liveaboard", label: "리브어보드", Icon: Anchor },
+];
+
+const STYLE_OPTIONS: ReadonlyArray<{ code: string; label: string }> = [
+  { code: "drift", label: "드리프트" },
+  { code: "wreck", label: "랙" },
+  { code: "night", label: "야간" },
+  { code: "deep", label: "딥" },
+  { code: "wall", label: "월" },
+  { code: "cave", label: "케이브" },
+  { code: "training", label: "교육" },
+];
+
+const CURRENT_OPTIONS: ReadonlyArray<{ code: CurrentStrength; label: string }> = [
+  { code: "none", label: "없음" },
+  { code: "mild", label: "약함" },
+  { code: "moderate", label: "보통" },
+  { code: "strong", label: "강함" },
+];
 
 const WEATHER_OPTIONS: ReadonlyArray<{
   code: WeatherCode;
@@ -73,6 +111,10 @@ const INITIAL: FormState = {
   visibility: "",
   durationMinutes: "",
   memo: "",
+  tankVolumeL: "",
+  tankStartBar: "",
+  tankEndBar: "",
+  surfaceIntervalMin: "",
 };
 
 const parseNumber = (s: string): number | null => {
@@ -132,7 +174,19 @@ export default function NewLogScreen() {
   const [location, setLocation] = useState<LocationFieldValue>(emptyLocation);
   const [diveStart, setDiveStart] = useState<Date | null>(null);
   const [weather, setWeather] = useState<WeatherCode>("sunny");
+  const [entryType, setEntryType] = useState<EntryType | null>(null);
+  const [diveStyle, setDiveStyle] = useState<Set<string>>(new Set());
+  const [currentStrength, setCurrentStrength] =
+    useState<CurrentStrength | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const toggleStyle = (code: string) =>
+    setDiveStyle((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
 
   // ──── 장비 선택 ────
   const { data: userEquipment } = useUserEquipment(userId);
@@ -244,6 +298,13 @@ export default function NewLogScreen() {
       const startedAt = diveStart ?? new Date(Date.now() - duration * 60_000);
       const endedAt = new Date(startedAt.getTime() + duration * 60_000);
 
+      const tankStart = parseNumber(form.tankStartBar);
+      const tankEnd = parseNumber(form.tankEndBar);
+      const consumptionBarPerMin =
+        tankStart !== null && tankEnd !== null && duration > 0
+          ? Math.round(((tankStart - tankEnd) / duration) * 10) / 10
+          : null;
+
       const { data: insertedDive, error } = await supabase
         .from("dives")
         .insert({
@@ -264,6 +325,14 @@ export default function NewLogScreen() {
           weather,
           memo: form.memo.trim() || null,
           is_verified: false,
+          entry_type: entryType,
+          dive_style: diveStyle.size > 0 ? [...diveStyle] : null,
+          current_strength: currentStrength,
+          surface_interval_min: parseNumber(form.surfaceIntervalMin),
+          tank_volume_l: parseNumber(form.tankVolumeL),
+          tank_start_bar: tankStart,
+          tank_end_bar: tankEnd,
+          consumption_bar_per_min: consumptionBarPerMin,
         })
         .select("id")
         .single();
@@ -464,6 +533,156 @@ export default function NewLogScreen() {
           onChangeText={(v) => update("durationMinutes", v)}
           keyboardType="number-pad"
           placeholder="42"
+          editable={!submitting}
+        />
+
+        <View className="gap-2">
+          <Text className="text-xs font-bold text-gray-700">탱크 / 공기</Text>
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <Field
+                label="용량 (L)"
+                value={form.tankVolumeL}
+                onChangeText={(v) => update("tankVolumeL", v)}
+                keyboardType="decimal-pad"
+                placeholder="11"
+                editable={!submitting}
+              />
+            </View>
+            <View className="flex-1">
+              <Field
+                label="시작 (bar)"
+                value={form.tankStartBar}
+                onChangeText={(v) => update("tankStartBar", v)}
+                keyboardType="decimal-pad"
+                placeholder="200"
+                editable={!submitting}
+              />
+            </View>
+            <View className="flex-1">
+              <Field
+                label="종료 (bar)"
+                value={form.tankEndBar}
+                onChangeText={(v) => update("tankEndBar", v)}
+                keyboardType="decimal-pad"
+                placeholder="50"
+                editable={!submitting}
+              />
+            </View>
+          </View>
+        </View>
+
+        <View className="gap-2">
+          <Text className="text-xs font-bold text-gray-700">진입 방식</Text>
+          <View className="flex-row gap-2">
+            {ENTRY_TYPE_OPTIONS.map(({ code, label, Icon }) => {
+              const active = entryType === code;
+              return (
+                <Pressable
+                  key={code}
+                  onPress={() =>
+                    setEntryType((prev) => (prev === code ? null : code))
+                  }
+                  disabled={submitting}
+                  accessibilityLabel={`진입 ${label}`}
+                  className={`flex-1 items-center gap-1 py-3 rounded-2xl border ${
+                    active
+                      ? "bg-brand-600 border-brand-600"
+                      : "bg-white border-gray-200"
+                  }`}
+                >
+                  <Icon
+                    size={18}
+                    color={active ? "#FFFFFF" : "#6B7280"}
+                    strokeWidth={active ? 2.5 : 2}
+                  />
+                  <Text
+                    className={`text-[10px] font-black ${
+                      active ? "text-white" : "text-gray-700"
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View className="gap-2">
+          <Text className="text-xs font-bold text-gray-700">스타일</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {STYLE_OPTIONS.map(({ code, label }) => {
+              const active = diveStyle.has(code);
+              return (
+                <Pressable
+                  key={code}
+                  onPress={() => toggleStyle(code)}
+                  disabled={submitting}
+                  className={`px-3 py-2 rounded-full border ${
+                    active
+                      ? "bg-brand-600 border-brand-600"
+                      : "bg-white border-gray-200"
+                  }`}
+                >
+                  <Text
+                    className={`text-[11px] font-black ${
+                      active ? "text-white" : "text-gray-700"
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View className="flex-row gap-3 items-end">
+          <View className="flex-1 gap-2">
+            <Text className="text-xs font-bold text-gray-700">조류</Text>
+            <View className="flex-row gap-2">
+              {CURRENT_OPTIONS.map(({ code, label }) => {
+                const active = currentStrength === code;
+                return (
+                  <Pressable
+                    key={code}
+                    onPress={() =>
+                      setCurrentStrength((prev) =>
+                        prev === code ? null : code,
+                      )
+                    }
+                    disabled={submitting}
+                    className={`flex-1 items-center py-2 rounded-xl border ${
+                      active
+                        ? "bg-brand-600 border-brand-600"
+                        : "bg-white border-gray-200"
+                    }`}
+                  >
+                    <Wind
+                      size={12}
+                      color={active ? "#FFFFFF" : "#9CA3AF"}
+                    />
+                    <Text
+                      className={`text-[9px] font-black mt-0.5 ${
+                        active ? "text-white" : "text-gray-700"
+                      }`}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        <Field
+          label="수면 휴식 (분, 직전 다이브와의 간격)"
+          value={form.surfaceIntervalMin}
+          onChangeText={(v) => update("surfaceIntervalMin", v)}
+          keyboardType="number-pad"
+          placeholder="60"
           editable={!submitting}
         />
 

@@ -10,3 +10,4 @@ export { Avatar } from "./Avatar";
 export { AlertHost } from "./AlertHost";
 export { DiveMap, buildDiveMarkers, type DiveMarker } from "./DiveMap";
 export { VideoPlayerModal } from "./VideoPlayerModal";
+export { DiveProfileGraph } from "./DiveProfileGraph";

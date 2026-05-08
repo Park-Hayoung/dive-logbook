@@ -1,5 +1,9 @@
 export type Weather = "맑음" | "구름" | "비" | "밤";
 
+export type EntryType = "boat" | "shore" | "liveaboard";
+export type CurrentStrength = "none" | "mild" | "moderate" | "strong";
+export type WaterType = "fresh" | "salt";
+
 export type Dive = {
   id: string;
   userId: string;
@@ -24,6 +28,23 @@ export type Dive = {
   rawBinaryUrl: string | null;
   thumbnailUrl: string | null;
   createdAt: string;
+  // BLE / 다이브 조건 필드 (003 마이그레이션)
+  diveMode: string | null;
+  entryType: EntryType | null;
+  diveStyle: string[] | null;
+  currentStrength: CurrentStrength | null;
+  surfaceIntervalMin: number | null;
+  gfLow: number | null;
+  gfHigh: number | null;
+  decoModel: string | null;
+  atmosphericMbar: number | null;
+  waterType: WaterType | null;
+  tankStartBar: number | null;
+  tankEndBar: number | null;
+  tankVolumeL: number | null;
+  tankSerial: string | null;
+  consumptionBarPerMin: number | null;
+  sacLPerMin: number | null;
 };
 
 export type DiveBuddy = { diveId: string; userId: string };

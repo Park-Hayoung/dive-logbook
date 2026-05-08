@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/src/services/supabase";
+import type { TablesInsert, TablesUpdate } from "@/src/types/database";
 
 export type Team = {
   id: string;
@@ -183,7 +184,7 @@ export function useCreateTeam(userId: string | undefined) {
       imageUrl?: string | null;
     }) => {
       if (!userId) throw new Error("로그인이 필요해요.");
-      const insertRow: Record<string, unknown> = {
+      const insertRow: TablesInsert<"teams"> = {
         name: input.name,
         leader_id: userId,
         description: input.description ?? null,
@@ -224,7 +225,7 @@ export function useUpdateTeam() {
       description?: string | null;
       imageUrl?: string | null;
     }) => {
-      const update: Record<string, unknown> = {};
+      const update: TablesUpdate<"teams"> = {};
       if (input.name !== undefined) update.name = input.name;
       if (input.description !== undefined) update.description = input.description;
       if (input.imageUrl !== undefined) update.image_url = input.imageUrl;

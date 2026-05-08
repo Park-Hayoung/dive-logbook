@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/src/services/supabase";
 import { mediaStorage } from "@/src/services/media-storage";
+import type { TablesUpdate } from "@/src/types/database";
 
 export type ProfileUpdate = {
   nickname?: string;
@@ -13,7 +14,7 @@ export function useUpdateProfile(userId: string | undefined) {
   return useMutation({
     mutationFn: async (input: ProfileUpdate) => {
       if (!userId) throw new Error("로그인이 필요해요.");
-      const update: Record<string, unknown> = {};
+      const update: TablesUpdate<"profiles"> = {};
       if (input.nickname !== undefined) update.nickname = input.nickname;
       if (input.bio !== undefined) update.bio = input.bio;
       if (input.profileImageUrl !== undefined)

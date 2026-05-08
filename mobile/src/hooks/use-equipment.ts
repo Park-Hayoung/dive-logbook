@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/src/services/supabase";
+import type { TablesUpdate } from "@/src/types/database";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Categories
@@ -403,7 +404,7 @@ export function useUpdateUserEquipment(userId: string | undefined) {
     mutationFn: async (args: { id: string; patch: UpdateEquipmentInput }) => {
       if (!userId) throw new Error("로그인이 필요해요.");
 
-      const row: Record<string, unknown> = {
+      const row: TablesUpdate<"user_equipment"> = {
         category: args.patch.category,
         serial_no: args.patch.serialNo ?? null,
         purchased_at: args.patch.purchasedAt ?? null,

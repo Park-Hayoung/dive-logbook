@@ -34,12 +34,43 @@ import {
 } from "@/src/hooks/use-dives";
 import { useCreateFeed } from "@/src/hooks/use-feeds";
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
+import { useDiveGasMixes } from "@/src/hooks/use-dive-samples";
 import { useAuthStore } from "@/src/store/auth-store";
-import { StatBox, DiveMediaGallery } from "@/src/components";
+import { StatBox, DiveMediaGallery, DiveProfileGraph } from "@/src/components";
 import { CATEGORY_LABEL } from "@/src/hooks/use-equipment";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 import { formatDate, formatTime } from "@/src/lib/format";
+
+const ENTRY_TYPE_LABEL: Record<string, string> = {
+  boat: "보트",
+  shore: "비치",
+  liveaboard: "리브어보드",
+};
+
+const STYLE_LABEL: Record<string, string> = {
+  drift: "드리프트",
+  wreck: "랙",
+  night: "야간",
+  deep: "딥",
+  wall: "월",
+  cave: "케이브",
+  training: "교육",
+};
+
+const CURRENT_LABEL: Record<string, string> = {
+  none: "조류 없음",
+  mild: "약한 조류",
+  moderate: "보통 조류",
+  strong: "강한 조류",
+};
+
+function gasName(o2: number, he: number): string {
+  if (he > 0) return `Tx ${o2}/${he}`;
+  if (o2 === 21) return "Air";
+  if (o2 === 100) return "O₂";
+  return `EAN${o2}`;
+}
 
 export default function LogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -49,6 +80,7 @@ export default function LogDetailScreen() {
   const { data: equipment = [], isLoading: equipmentLoading } =
     useDiveEquipmentDetails(id);
   const { data: media = [] } = useDiveMedia(id);
+  const { data: gasMixes = [] } = useDiveGasMixes(id);
   const createFeed = useCreateFeed(userId);
   const deleteDive = useDeleteDive(userId);
 
@@ -282,7 +314,135 @@ export default function LogDetailScreen() {
             </View>
           </View>
 
-          <View className="bg-white p-5 rounded-3xl border border-gray-100 mt-2">
+          {dive.tankStartBar !== null || dive.tankEndBar !== null ? (
+            <View className="flex-row gap-2 mb-4">
+              <View className="flex-1">
+                <StatBox
+                  label="시작 압력"
+                  value={dive.tankStartBar?.toFixed(0) ?? "—"}
+                  unit={dive.tankStartBar !== null ? "bar" : ""}
+                />
+              </View>
+              <View className="flex-1">
+                <StatBox
+                  label="종료 압력"
+                  value={dive.tankEndBar?.toFixed(0) ?? "—"}
+                  unit={dive.tankEndBar !== null ? "bar" : ""}
+                />
+              </View>
+              <View className="flex-1">
+                <StatBox
+                  label="공기 소모"
+                  value={
+                    dive.consumptionBarPerMin?.toFixed(1) ??
+                    (dive.tankStartBar !== null && dive.tankEndBar !== null
+                      ? (dive.tankStartBar - dive.tankEndBar).toFixed(0)
+                      : "—")
+                  }
+                  unit={dive.consumptionBarPerMin !== null ? "bar/min" : "bar"}
+                />
+              </View>
+            </View>
+          ) : null}
+
+          <View className="mt-2">
+            <DiveProfileGraph diveId={dive.id} />
+          </View>
+
+          {gasMixes.length > 0 ? (
+            <View className="bg-white p-5 rounded-3xl border border-gray-100 mt-3">
+              <Text className="text-[10px] font-black text-gray-400 uppercase mb-3">
+                가스 믹스
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {gasMixes.map((g) => (
+                  <View
+                    key={g.index}
+                    className={`px-3 py-2 rounded-2xl border ${
+                      g.isDiluent
+                        ? "bg-amber-50 border-amber-100"
+                        : "bg-brand-50 border-brand-100"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-black ${
+                        g.isDiluent ? "text-amber-700" : "text-brand-700"
+                      }`}
+                    >
+                      {gasName(g.o2, g.he)}
+                      {g.isDiluent ? " (Dil)" : ""}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {dive.entryType ||
+          (dive.diveStyle && dive.diveStyle.length > 0) ||
+          dive.currentStrength ||
+          dive.surfaceIntervalMin !== null ? (
+            <View className="bg-white p-5 rounded-3xl border border-gray-100 mt-3">
+              <Text className="text-[10px] font-black text-gray-400 uppercase mb-3">
+                다이브 조건
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {dive.entryType ? (
+                  <ConditionChip
+                    label={ENTRY_TYPE_LABEL[dive.entryType] ?? dive.entryType}
+                  />
+                ) : null}
+                {(dive.diveStyle ?? []).map((s) => (
+                  <ConditionChip key={s} label={STYLE_LABEL[s] ?? s} />
+                ))}
+                {dive.currentStrength ? (
+                  <ConditionChip
+                    label={
+                      CURRENT_LABEL[dive.currentStrength] ?? dive.currentStrength
+                    }
+                  />
+                ) : null}
+                {dive.surfaceIntervalMin !== null ? (
+                  <ConditionChip
+                    label={`수면휴식 ${dive.surfaceIntervalMin}분`}
+                  />
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+
+          {dive.diveMode || dive.decoModel || dive.gfLow !== null ? (
+            <View className="bg-white p-5 rounded-3xl border border-gray-100 mt-3">
+              <Text className="text-[10px] font-black text-gray-400 uppercase mb-3">
+                컴퓨터 설정
+              </Text>
+              <View className="gap-1.5">
+                {dive.diveMode ? (
+                  <InfoLine label="모드" value={dive.diveMode} />
+                ) : null}
+                {dive.decoModel ? (
+                  <InfoLine label="감압 모델" value={dive.decoModel} />
+                ) : null}
+                {dive.gfLow !== null && dive.gfHigh !== null ? (
+                  <InfoLine label="GF" value={`${dive.gfLow} / ${dive.gfHigh}`} />
+                ) : null}
+                {dive.atmosphericMbar !== null ? (
+                  <InfoLine
+                    label="기압"
+                    value={`${dive.atmosphericMbar} mbar`}
+                  />
+                ) : null}
+                {dive.waterType ? (
+                  <InfoLine
+                    label="수질"
+                    value={dive.waterType === "fresh" ? "담수" : "염수"}
+                  />
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+
+          <View className="bg-white p-5 rounded-3xl border border-gray-100 mt-3">
             <Text className="text-[10px] font-black text-gray-400 uppercase mb-2">
               Dive Diary
             </Text>
@@ -389,5 +549,22 @@ export default function LogDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+function ConditionChip({ label }: { label: string }) {
+  return (
+    <View className="bg-gray-100 px-3 py-1.5 rounded-full">
+      <Text className="text-[11px] font-black text-gray-700">{label}</Text>
+    </View>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row justify-between">
+      <Text className="text-[11px] font-bold text-gray-500">{label}</Text>
+      <Text className="text-xs font-black text-gray-900">{value}</Text>
+    </View>
   );
 }

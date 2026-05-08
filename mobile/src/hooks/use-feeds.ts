@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { supabase } from "@/src/services/supabase";
+import type { TablesUpdate } from "@/src/types/database";
 
 export type FeedAuthor = {
   id: string;
@@ -243,7 +244,7 @@ export function useUpdateFeed(currentUserId: string | undefined) {
       previousImageUrl?: string | null;
     }) => {
       if (!currentUserId) throw new Error("로그인이 필요해요.");
-      const update: Record<string, unknown> = {};
+      const update: TablesUpdate<"feeds"> = {};
       if (input.content !== undefined) update.content = input.content;
       if (input.location !== undefined) update.location = input.location;
       if (input.imageUrl !== undefined) update.image_url = input.imageUrl;

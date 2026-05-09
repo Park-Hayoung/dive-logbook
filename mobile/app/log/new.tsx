@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { colors } from "@/src/lib/colors";
 import {
   View,
@@ -231,6 +231,103 @@ export default function NewLogScreen() {
   // 다이브 row 가 아직 없으니 업로드는 보류 — INSERT 성공 후 일괄 업로드.
   const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+
+  // ──── 직전 로그 프리필 ────
+  // 마운트 시 1회만 — 가장 최신 다이브가 있으면 그 정보를 불러올지 묻고,
+  // 사용자가 동의하면 국가/지역/날짜/수온/장비/버디를 한 번에 채워준다.
+  const prefillPromptedRef = useRef(false);
+  useEffect(() => {
+    if (!userId) return;
+    if (prefillPromptedRef.current) return;
+    prefillPromptedRef.current = true;
+
+    (async () => {
+      const { data: latest, error } = await supabase
+        .from("dives")
+        .select(
+          "id, dive_number, country, location, point, lat, lng, place_id, started_at, water_temp",
+        )
+        .eq("user_id", userId)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !latest) return;
+
+      const where = [latest.country, latest.location].filter(Boolean).join(" ");
+      showAlert(
+        "이전 로그 불러오기",
+        `가장 최근 로그${
+          latest.dive_number ? ` #${latest.dive_number}` : ""
+        }${where ? ` (${where})` : ""}의 국가·지역·날짜·수온·장비·버디 정보를 불러올까요?`,
+        [
+          { text: "새로 입력", style: "cancel" },
+          {
+            text: "불러오기",
+            onPress: async () => {
+              const toNum = (v: number | string | null | undefined): number | null =>
+                v === null || v === undefined
+                  ? null
+                  : typeof v === "number"
+                    ? v
+                    : Number.isFinite(Number(v))
+                      ? Number(v)
+                      : null;
+
+              setLocation({
+                country: latest.country ?? "",
+                location: latest.location ?? "",
+                point: latest.point ?? "",
+                lat: toNum(latest.lat),
+                lng: toNum(latest.lng),
+                placeId: latest.place_id ?? null,
+                source: latest.place_id ? "places" : "manual",
+              });
+
+              if (latest.started_at) {
+                const d = new Date(latest.started_at);
+                if (!Number.isNaN(d.getTime())) {
+                  d.setHours(0, 0, 0, 0);
+                  setDiveDate(d);
+                }
+              }
+
+              const wt = toNum(latest.water_temp);
+              if (wt !== null) {
+                setForm((prev) => ({ ...prev, waterTemp: String(wt) }));
+              }
+
+              const [eqRes, bdRes] = await Promise.all([
+                supabase
+                  .from("dive_user_equipment")
+                  .select("user_equipment_id")
+                  .eq("dive_id", latest.id),
+                supabase
+                  .from("dive_buddies")
+                  .select("user_id")
+                  .eq("dive_id", latest.id),
+              ]);
+              if (!eqRes.error && eqRes.data) {
+                setSelectedEqIds(
+                  new Set(
+                    (eqRes.data as { user_equipment_id: string }[]).map(
+                      (r) => r.user_equipment_id,
+                    ),
+                  ),
+                );
+              }
+              if (!bdRes.error && bdRes.data) {
+                setSelectedBuddyIds(
+                  new Set(
+                    (bdRes.data as { user_id: string }[]).map((r) => r.user_id),
+                  ),
+                );
+              }
+            },
+          },
+        ],
+      );
+    })();
+  }, [userId]);
 
   const pickMedia = async (kind: "image" | "video") => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();

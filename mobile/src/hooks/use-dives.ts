@@ -489,38 +489,76 @@ export function useDiveEquipmentDetails(diveId: string | undefined) {
     queryKey: ["dive-equipment-details", diveId],
     enabled: !!diveId,
     queryFn: async (): Promise<DiveEquipmentItem[]> => {
-      const { data, error } = await supabase
+      // dive_user_equipment 는 (dive_id, user_equipment_id) 만 있는 junction —
+      // PostgREST 의 중첩 embed 가 가끔 빈 객체로 돌아와 장비가 안 보이는 케이스가 있어
+      // useDiveBuddyProfiles 와 동일하게 ID 만 먼저 가져온 뒤 별도 쿼리로 합친다.
+      const { data: linkRows, error: linkErr } = await supabase
         .from("dive_user_equipment")
-        .select(
-          `user_equipment:user_equipment_id(
-             id, category, custom_brand, custom_model,
-             catalog:equipment!equipment_id(brand, brand_en, model)
-           )`,
-        )
+        .select("user_equipment_id")
         .eq("dive_id", diveId!);
-      if (error) throw new Error(error.message || JSON.stringify(error));
+      if (linkErr) throw new Error(linkErr.message || JSON.stringify(linkErr));
+      const ids = ((linkRows ?? []) as { user_equipment_id: string }[]).map(
+        (r) => r.user_equipment_id,
+      );
+      if (ids.length === 0) return [];
+
+      const { data: eqRows, error: eqErr } = await supabase
+        .from("user_equipment")
+        .select(
+          `id, category, equipment_id, custom_brand, custom_model,
+           catalog:equipment!equipment_id(brand, brand_en, model)`,
+        )
+        .in("id", ids);
+      if (eqErr) throw new Error(eqErr.message || JSON.stringify(eqErr));
 
       type Row = {
-        user_equipment: {
-          id: string;
-          category: string;
-          custom_brand: string | null;
-          custom_model: string | null;
-          catalog: {
-            brand: string | null;
-            brand_en: string | null;
-            model: string;
-          } | null;
+        id: string;
+        category: string;
+        equipment_id: string | null;
+        custom_brand: string | null;
+        custom_model: string | null;
+        catalog: {
+          brand: string | null;
+          brand_en: string | null;
+          model: string;
         } | null;
       };
 
-      const rows = ((data ?? []) as unknown as Row[])
-        .map((r) => r.user_equipment)
-        .filter((eq): eq is NonNullable<Row["user_equipment"]> => !!eq);
+      const rows = (eqRows ?? []) as unknown as Row[];
+
+      // 카탈로그 embed 가 비어 오는 폴백 — equipment_id 로 별도 조회해서 채운다.
+      const missingCatalogIds = rows
+        .filter((r) => r.equipment_id && !r.catalog)
+        .map((r) => r.equipment_id as string);
+      const catalogById = new Map<
+        string,
+        { brand: string | null; brand_en: string | null; model: string }
+      >();
+      if (missingCatalogIds.length > 0) {
+        const { data: cats } = await supabase
+          .from("equipment")
+          .select("id, brand, brand_en, model")
+          .in("id", missingCatalogIds);
+        for (const c of (cats ?? []) as unknown as {
+          id: string;
+          brand: string | null;
+          brand_en: string | null;
+          model: string;
+        }[]) {
+          catalogById.set(c.id, {
+            brand: c.brand,
+            brand_en: c.brand_en,
+            model: c.model,
+          });
+        }
+      }
 
       return rows.map((eq) => {
-        const brand = eq.catalog?.brand ?? eq.custom_brand ?? "—";
-        const model = eq.catalog?.model ?? eq.custom_model ?? "—";
+        const cat =
+          eq.catalog ??
+          (eq.equipment_id ? catalogById.get(eq.equipment_id) ?? null : null);
+        const brand = cat?.brand ?? eq.custom_brand ?? "—";
+        const model = cat?.model ?? eq.custom_model ?? "—";
         return { id: eq.id, category: eq.category, brand, model };
       });
     },

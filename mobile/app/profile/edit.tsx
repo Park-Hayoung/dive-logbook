@@ -19,17 +19,13 @@ import {
   useUploadAvatar,
 } from "@/src/hooks/use-update-profile";
 import { useCertifications } from "@/src/hooks/use-certifications";
-import { Avatar, KeyboardSafeScroll } from "@/src/components";
+import {
+  Avatar,
+  AvatarCropModal,
+  KeyboardSafeScroll,
+} from "@/src/components";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
-
-const guessContentType = (uri: string): string => {
-  const ext = uri.split(".").pop()?.toLowerCase() ?? "";
-  if (ext === "png") return "image/png";
-  if (ext === "heic") return "image/heic";
-  if (ext === "webp") return "image/webp";
-  return "image/jpeg";
-};
 
 export default function ProfileEditScreen() {
   const router = useRouter();
@@ -43,6 +39,7 @@ export default function ProfileEditScreen() {
   const [bio, setBio] = useState("");
   const [priorDives, setPriorDives] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cropUri, setCropUri] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -62,26 +59,27 @@ export default function ProfileEditScreen() {
       showAlert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
       return;
     }
+    // 자체 크롭 모달에서 원형 가이드를 보여주기 위해 OS 기본 크롭은 끔.
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
+      allowsEditing: false,
+      quality: 1,
     });
     if (picked.canceled) return;
     const asset = picked.assets[0];
     if (!asset) return;
+    setCropUri(asset.uri);
+  };
 
+  const onCropConfirm = async (croppedUri: string, contentType: string) => {
+    setCropUri(null);
     try {
       await uploadAvatar.mutateAsync({
-        localUri: asset.uri,
-        contentType: asset.mimeType ?? guessContentType(asset.uri),
+        localUri: croppedUri,
+        contentType,
       });
     } catch (err: unknown) {
-      showAlert(
-        "프로필 사진 업로드 실패",
-        friendlyError(err),
-      );
+      showAlert("프로필 사진 업로드 실패", friendlyError(err));
     }
   };
 
@@ -244,6 +242,13 @@ export default function ProfileEditScreen() {
           )}
         </Pressable>
       </KeyboardSafeScroll>
+
+      <AvatarCropModal
+        visible={cropUri !== null}
+        uri={cropUri}
+        onCancel={() => setCropUri(null)}
+        onConfirm={onCropConfirm}
+      />
     </SafeAreaView>
   );
 }

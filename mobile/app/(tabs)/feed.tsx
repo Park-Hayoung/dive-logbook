@@ -1,18 +1,19 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
   Pressable,
   RefreshControl,
 } from "react-native";
+import type { ViewToken } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Pencil, Search } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
-import { useFeeds, useToggleFeedLike } from "@/src/hooks/use-feeds";
+import { useFeeds, useToggleFeedLike, type FeedItem } from "@/src/hooks/use-feeds";
 import { FeedCard } from "@/src/components";
 
 export default function FeedScreen() {
@@ -21,6 +22,7 @@ export default function FeedScreen() {
   const { data: feeds, isLoading, refetch, isRefetching } = useFeeds(userId);
   const toggleLike = useToggleFeedLike(userId);
   const [optimisticBusy, setOptimisticBusy] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const onToggleLike = async (feedId: string, currentlyLiked: boolean) => {
     if (optimisticBusy) return;
@@ -32,65 +34,99 @@ export default function FeedScreen() {
     }
   };
 
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current;
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length === 0) {
+        setActiveId(null);
+        return;
+      }
+      const first = viewableItems[0].item as FeedItem;
+      setActiveId(first.id);
+    },
+  ).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setActiveId(null);
+      };
+    }, []),
+  );
+
+  const header = (
+    <View className="flex-row justify-between items-start mb-6">
+      <View>
+        <Text className="text-2xl font-black text-gray-900 mb-1">
+          실시간 피드
+        </Text>
+        <Text className="text-sm text-gray-500">
+          전 세계 다이버들의 기록과 일상
+        </Text>
+      </View>
+      <Pressable
+        onPress={() => router.push("/search" as never)}
+        hitSlop={8}
+        className="w-10 h-10 bg-white rounded-full items-center justify-center border border-gray-200"
+      >
+        <Search size={16} color="#374151" />
+      </Pressable>
+    </View>
+  );
+
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-        }
-      >
-        <View className="flex-row justify-between items-start mb-6">
-          <View>
-            <Text className="text-2xl font-black text-gray-900 mb-1">
-              실시간 피드
-            </Text>
-            <Text className="text-sm text-gray-500">
-              전 세계 다이버들의 기록과 일상
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push("/search" as never)}
-            hitSlop={8}
-            className="w-10 h-10 bg-white rounded-full items-center justify-center border border-gray-200"
-          >
-            <Search size={16} color="#374151" />
-          </Pressable>
-        </View>
-
-        {isLoading ? (
+      {isLoading ? (
+        <View className="flex-1 px-5 pt-5">
+          {header}
           <View className="bg-white p-8 rounded-3xl items-center">
             <ActivityIndicator />
           </View>
-        ) : !feeds || feeds.length === 0 ? (
+        </View>
+      ) : !feeds || feeds.length === 0 ? (
+        <View className="flex-1 px-5 pt-5">
+          {header}
           <View className="bg-white p-8 rounded-3xl items-center">
             <Text className="text-gray-400 text-xs text-center">
               아직 피드가 없어요.{"\n"}첫 글을 남겨보세요!
             </Text>
           </View>
-        ) : (
-          feeds.map((feed) => (
+        </View>
+      ) : (
+        <FlatList
+          data={feeds}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+          ListHeaderComponent={header}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          }
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
+          renderItem={({ item }) => (
             <FeedCard
-              key={feed.id}
-              feed={feed}
-              onToggleLike={() => onToggleLike(feed.id, feed.myLiked)}
+              feed={item}
+              isActive={activeId === item.id}
+              onToggleLike={() => onToggleLike(item.id, item.myLiked)}
               onPress={() =>
-                router.push({ pathname: "/feed/[id]", params: { id: feed.id } })
+                router.push({ pathname: "/feed/[id]", params: { id: item.id } })
               }
               onAuthorPress={
-                feed.author
+                item.author
                   ? () =>
                       router.push({
                         pathname: "/profile/[id]",
-                        params: { id: feed.author!.id },
+                        params: { id: item.author!.id },
                       })
                   : undefined
               }
             />
-          ))
-        )}
-      </ScrollView>
+          )}
+        />
+      )}
 
       <Pressable
         onPress={() => router.push("/feed/new")}

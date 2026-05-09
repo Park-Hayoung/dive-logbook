@@ -1,18 +1,18 @@
-import { useState } from "react";
 import {
   View,
   Text,
   Pressable,
   Image,
-  ScrollView,
   Dimensions,
 } from "react-native";
-import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { Heart, MessageCircle, MapPin } from "lucide-react-native";
 
 import type { FeedItem } from "@/src/hooks/use-feeds";
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
-import { VideoThumb } from "@/src/components/VideoThumb";
+import {
+  FeedMediaCarousel,
+  type FeedMediaItem,
+} from "@/src/components/FeedMediaCarousel";
 
 const formatRelative = (iso: string): string => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -35,23 +35,23 @@ type Props = {
   onToggleLike: () => void;
   onPress?: () => void;
   onAuthorPress?: () => void;
+  isActive?: boolean;
 };
 
-type CarouselItem = {
-  id: string;
-  url: string;
-  kind: "image" | "video";
-  thumbnailUrl: string | null;
-};
-
-export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) {
+export function FeedCard({
+  feed,
+  onToggleLike,
+  onPress,
+  onAuthorPress,
+  isActive,
+}: Props) {
   const initial = feed.author?.nickname?.charAt(0) ?? "?";
 
   const { data: diveMedia = [] } = useDiveMedia(
     feed.linkedDiveId ?? undefined,
   );
 
-  const items: CarouselItem[] =
+  const items: FeedMediaItem[] =
     feed.linkedDiveId && diveMedia.length > 0
       ? diveMedia.map((m) => ({
           id: m.id,
@@ -69,12 +69,6 @@ export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) 
             },
           ]
         : [];
-
-  const [page, setPage] = useState(0);
-  const onMediaScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = e.nativeEvent.contentOffset.x;
-    setPage(Math.round(x / MEDIA_WIDTH));
-  };
 
   return (
     <Pressable
@@ -123,86 +117,14 @@ export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) 
         </Text>
       ) : null}
 
-      {items.length === 1 ? (
-        <View
-          style={{ width: "100%", height: MEDIA_HEIGHT, marginBottom: 12 }}
-          className="bg-gray-100"
-        >
-          {items[0].kind === "video" ? (
-            <VideoThumb
-              videoUrl={items[0].url}
-              thumbnailUrl={items[0].thumbnailUrl}
-              style={{ width: "100%", height: "100%" }}
-            />
-          ) : (
-            <Image
-              source={{ uri: items[0].url }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
-          )}
-        </View>
-      ) : items.length > 1 ? (
-        <View className="mb-3">
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={onMediaScroll}
-            scrollEventThrottle={16}
-          >
-            {items.map((m) => (
-              <View
-                key={m.id}
-                style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT }}
-                className="bg-gray-100"
-              >
-                {m.kind === "video" ? (
-                  <VideoThumb
-                    videoUrl={m.url}
-                    thumbnailUrl={m.thumbnailUrl}
-                    style={{ width: "100%", height: "100%" }}
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: m.url }}
-                    style={{ width: "100%", height: "100%" }}
-                    resizeMode="cover"
-                  />
-                )}
-              </View>
-            ))}
-          </ScrollView>
-          <View
-            style={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              backgroundColor: "rgba(0,0,0,0.55)",
-              borderRadius: 12,
-              paddingHorizontal: 8,
-              paddingVertical: 2,
-            }}
-          >
-            <Text className="text-white text-[10px] font-bold">
-              {page + 1} / {items.length}
-            </Text>
-          </View>
-          <View className="flex-row justify-center gap-1 mt-2">
-            {items.map((_, i) => (
-              <View
-                key={i}
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: i === page ? "#2563EB" : "#D1D5DB",
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
+      <FeedMediaCarousel
+        items={items}
+        width={MEDIA_WIDTH}
+        height={MEDIA_HEIGHT}
+        isActive={!!isActive}
+        onPressMedia={onPress}
+        onPressVideo={onPress ? () => onPress() : undefined}
+      />
 
       {feed.location && !feed.content ? (
         <View className="flex-row items-center gap-1.5 mb-3">
@@ -240,6 +162,29 @@ export function FeedCard({ feed, onToggleLike, onPress, onAuthorPress }: Props) 
           </Text>
         </View>
       </View>
+
+      {feed.recentComments.length > 0 ? (
+        <View className="mt-2 gap-1">
+          {feed.commentCount > feed.recentComments.length ? (
+            <Text className="text-xs text-gray-400">
+              댓글 {feed.commentCount}개 모두 보기
+            </Text>
+          ) : null}
+          {feed.recentComments.map((c) => (
+            <View key={c.id} className="flex-row gap-1.5">
+              <Text className="text-xs font-black text-gray-900">
+                {c.author?.nickname ?? "Unknown"}
+              </Text>
+              <Text
+                className="text-xs text-gray-700 flex-1"
+                numberOfLines={2}
+              >
+                {c.content}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </Pressable>
   );
 }

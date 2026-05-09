@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ChevronLeft,
   Heart,
@@ -33,12 +33,16 @@ import {
 import {
   useFeedComments,
   useAddFeedComment,
+  useToggleFeedCommentLike,
 } from "@/src/hooks/use-feed-comments";
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 import { VideoPlayerModal } from "@/src/components/VideoPlayerModal";
-import { VideoThumb } from "@/src/components/VideoThumb";
+import {
+  FeedMediaCarousel,
+  type FeedMediaItem,
+} from "@/src/components/FeedMediaCarousel";
 
 const formatRelative = (iso: string): string => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -57,20 +61,29 @@ export default function FeedDetailScreen() {
 
   const { data: feed, isLoading } = useFeed(id, userId);
   const { data: comments = [], isLoading: commentsLoading } =
-    useFeedComments(id);
+    useFeedComments(id, userId);
   const { data: diveMedia = [] } = useDiveMedia(feed?.linkedDiveId ?? undefined);
   const toggleLike = useToggleFeedLike(userId);
   const addComment = useAddFeedComment(id, userId);
   const deleteFeed = useDeleteFeed(userId);
+  const toggleCommentLike = useToggleFeedCommentLike(id, userId);
 
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
-  const [feedImageRatio, setFeedImageRatio] = useState<number | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isFocused, setIsFocused] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, []),
+  );
 
   const { width: screenWidth } = useWindowDimensions();
   // outer ScrollView padding 20*2 + 카드 p-5 (20*2) = 80
-  const carouselSize = Math.max(0, screenWidth - 80);
+  const mediaWidth = Math.max(0, screenWidth - 80);
+  const mediaHeight = 240;
 
   const onSubmit = async () => {
     const trimmed = draft.trim();
@@ -244,59 +257,35 @@ export default function FeedDetailScreen() {
               </Text>
             ) : null}
 
-            {feed.linkedDiveId && diveMedia.length > 0 ? (
-              <ScrollView
-                horizontal
-                pagingEnabled
-                snapToInterval={carouselSize}
-                decelerationRate="fast"
-                showsHorizontalScrollIndicator={false}
-                className="mb-3"
-              >
-                {diveMedia.map((m) => {
-                  const isVideo = m.kind === "video";
-                  return (
-                    <Pressable
-                      key={m.id}
-                      onPress={() =>
-                        isVideo ? setVideoUrl(m.storageUrl) : null
-                      }
-                      style={{ width: carouselSize, height: carouselSize }}
-                      className="rounded-2xl overflow-hidden bg-gray-100"
-                    >
-                      {isVideo ? (
-                        <VideoThumb
-                          videoUrl={m.storageUrl}
-                          thumbnailUrl={m.thumbnailUrl}
-                          resizeMode="contain"
-                          style={{ width: "100%", height: "100%" }}
-                        />
-                      ) : (
-                        <Image
-                          source={{ uri: m.storageUrl }}
-                          style={{ width: "100%", height: "100%" }}
-                          resizeMode="contain"
-                        />
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            ) : feed.imageUrl ? (
-              <Image
-                source={{ uri: feed.imageUrl }}
-                onLoad={(e) => {
-                  const { width, height } = e.nativeEvent.source;
-                  if (width && height) setFeedImageRatio(width / height);
-                }}
-                style={{
-                  width: "100%",
-                  aspectRatio: feedImageRatio ?? 4 / 3,
-                }}
-                className="rounded-2xl mb-3 bg-gray-100"
-                resizeMode="cover"
-              />
-            ) : null}
+            {(() => {
+              const items: FeedMediaItem[] =
+                feed.linkedDiveId && diveMedia.length > 0
+                  ? diveMedia.map((m) => ({
+                      id: m.id,
+                      url: m.storageUrl,
+                      kind: m.kind,
+                      thumbnailUrl: m.thumbnailUrl,
+                    }))
+                  : feed.imageUrl
+                    ? [
+                        {
+                          id: "feed-image",
+                          url: feed.imageUrl,
+                          kind: "image" as const,
+                          thumbnailUrl: null,
+                        },
+                      ]
+                    : [];
+              return (
+                <FeedMediaCarousel
+                  items={items}
+                  width={mediaWidth}
+                  height={mediaHeight}
+                  isActive={isFocused && !videoUrl}
+                  onPressVideo={(url) => setVideoUrl(url)}
+                />
+              );
+            })()}
 
             {feed.location ? (
               <View className="flex-row items-center gap-1.5 mb-3">
@@ -408,6 +397,31 @@ export default function FeedDetailScreen() {
                     <Text className="text-sm text-gray-800 mt-0.5">
                       {c.content}
                     </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() =>
+                      toggleCommentLike.mutate({
+                        commentId: c.id,
+                        currentlyLiked: c.myLiked,
+                      })
+                    }
+                    hitSlop={8}
+                    className="items-center justify-center px-1"
+                  >
+                    <Heart
+                      size={14}
+                      color={c.myLiked ? "#EF4444" : "#9CA3AF"}
+                      fill={c.myLiked ? "#EF4444" : "transparent"}
+                    />
+                    {c.likeCount > 0 ? (
+                      <Text
+                        className={`text-[10px] font-bold mt-0.5 ${
+                          c.myLiked ? "text-red-500" : "text-gray-500"
+                        }`}
+                      >
+                        {c.likeCount}
+                      </Text>
+                    ) : null}
                   </Pressable>
                 </View>
               ))}

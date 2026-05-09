@@ -9,6 +9,7 @@ import {
 import { ImageOff, Images } from "lucide-react-native";
 
 import type { FeedThumb } from "@/src/hooks/use-feeds";
+import { VideoThumb } from "@/src/components/VideoThumb";
 
 const GRID_GAP = 2;
 const GRID_COLUMNS = 3;
@@ -66,11 +67,20 @@ export function FeedGrid({
             style={{ width: tileSize, height: tileSize }}
             className="bg-gray-100 active:opacity-70"
           >
-            <Image
-              source={{ uri: m.imageUrl }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
+            {m.kind === "video" && m.videoUrl ? (
+              <VideoThumb
+                videoUrl={m.videoUrl}
+                thumbnailUrl={m.imageUrl}
+                style={{ width: "100%", height: "100%" }}
+                playIconSize={14}
+              />
+            ) : m.imageUrl ? (
+              <Image
+                source={{ uri: m.imageUrl }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            ) : null}
             {m.hasMultipleMedia ? (
               <View
                 style={{

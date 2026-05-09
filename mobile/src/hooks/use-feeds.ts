@@ -13,6 +13,13 @@ export type FeedAuthor = {
   profileImageUrl: string | null;
 };
 
+export type FeedItemComment = {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: FeedAuthor | null;
+};
+
 export type FeedItem = {
   id: string;
   authorId: string;
@@ -26,6 +33,7 @@ export type FeedItem = {
   likeCount: number;
   commentCount: number;
   myLiked: boolean;
+  recentComments: FeedItemComment[];
 };
 
 type FeedRow = {
@@ -46,7 +54,9 @@ type FeedRow = {
 
 export type FeedThumb = {
   id: string;
-  imageUrl: string;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  kind: "image" | "video";
   createdAt: string;
   hasMultipleMedia: boolean;
 };
@@ -63,7 +73,7 @@ export function useInfiniteUserFeedsWithImages(userId: string | undefined) {
         .from("feeds")
         .select("id, image_url, created_at, linked_dive_id")
         .eq("author_id", userId!)
-        .not("image_url", "is", null)
+        .or("image_url.not.is.null,linked_dive_id.not.is.null")
         .order("created_at", { ascending: false })
         .limit(FEED_GRID_PAGE_SIZE);
       if (pageParam) {
@@ -74,7 +84,7 @@ export function useInfiniteUserFeedsWithImages(userId: string | undefined) {
 
       const rows = (data ?? []) as unknown as Array<{
         id: string;
-        image_url: string;
+        image_url: string | null;
         created_at: string;
         linked_dive_id: string | null;
       }>;
@@ -83,28 +93,66 @@ export function useInfiniteUserFeedsWithImages(userId: string | undefined) {
         .map((r) => r.linked_dive_id)
         .filter((x): x is string => !!x);
 
-      const multiCount = new Map<string, number>();
+      type MediaRow = {
+        dive_id: string;
+        storage_url: string;
+        kind: "image" | "video";
+        thumbnail_url: string | null;
+        uploaded_at: string;
+      };
+      const mediaByDive = new Map<string, MediaRow[]>();
       if (linkedDiveIds.length > 0) {
         const { data: mediaRows, error: mediaError } = await supabase
           .from("dive_media")
-          .select("dive_id")
-          .in("dive_id", linkedDiveIds);
+          .select("dive_id, storage_url, kind, thumbnail_url, uploaded_at")
+          .in("dive_id", linkedDiveIds)
+          .order("uploaded_at", { ascending: false });
         if (mediaError) throw mediaError;
-        for (const r of (mediaRows ?? []) as unknown as Array<{
-          dive_id: string;
-        }>) {
-          multiCount.set(r.dive_id, (multiCount.get(r.dive_id) ?? 0) + 1);
+        for (const r of (mediaRows ?? []) as unknown as MediaRow[]) {
+          const arr = mediaByDive.get(r.dive_id) ?? [];
+          arr.push(r);
+          mediaByDive.set(r.dive_id, arr);
         }
       }
 
-      return rows.map((r) => ({
-        id: r.id,
-        imageUrl: r.image_url,
-        createdAt: r.created_at,
-        hasMultipleMedia: r.linked_dive_id
-          ? (multiCount.get(r.linked_dive_id) ?? 0) > 1
-          : false,
-      }));
+      const thumbs: FeedThumb[] = [];
+      for (const r of rows) {
+        const media = r.linked_dive_id
+          ? mediaByDive.get(r.linked_dive_id)
+          : undefined;
+        const cover = media?.[0];
+        if (cover) {
+          if (cover.kind === "video") {
+            thumbs.push({
+              id: r.id,
+              imageUrl: cover.thumbnail_url ?? r.image_url,
+              videoUrl: cover.storage_url,
+              kind: "video",
+              createdAt: r.created_at,
+              hasMultipleMedia: media!.length > 1,
+            });
+          } else {
+            thumbs.push({
+              id: r.id,
+              imageUrl: cover.storage_url,
+              videoUrl: null,
+              kind: "image",
+              createdAt: r.created_at,
+              hasMultipleMedia: media!.length > 1,
+            });
+          }
+        } else if (r.image_url) {
+          thumbs.push({
+            id: r.id,
+            imageUrl: r.image_url,
+            videoUrl: null,
+            kind: "image",
+            createdAt: r.created_at,
+            hasMultipleMedia: false,
+          });
+        }
+      }
+      return thumbs;
     },
     getNextPageParam: (lastPage) =>
       lastPage.length === FEED_GRID_PAGE_SIZE
@@ -129,6 +177,9 @@ export function useFeeds(currentUserId: string | undefined) {
         .limit(50);
       if (error) throw error;
 
+      const feedRows = (data ?? []) as unknown as FeedRow[];
+      const feedIds = feedRows.map((r) => r.id);
+
       let mineSet = new Set<string>();
       if (currentUserId) {
         const { data: mine } = await supabase
@@ -142,7 +193,51 @@ export function useFeeds(currentUserId: string | undefined) {
         );
       }
 
-      return ((data ?? []) as unknown as FeedRow[]).map((r) => ({
+      const commentsByFeed = new Map<string, FeedItemComment[]>();
+      if (feedIds.length > 0) {
+        const { data: commentRows, error: commentErr } = await supabase
+          .from("feed_comments")
+          .select(
+            `id, feed_id, content, created_at,
+            author:profiles!author_id(id, nickname, profile_image_url)`,
+          )
+          .in("feed_id", feedIds)
+          .order("created_at", { ascending: false });
+        if (commentErr) throw commentErr;
+
+        type CommentRow = {
+          id: string;
+          feed_id: string;
+          content: string;
+          created_at: string;
+          author:
+            | { id: string; nickname: string; profile_image_url: string | null }
+            | null;
+        };
+        for (const c of (commentRows ?? []) as unknown as CommentRow[]) {
+          const arr = commentsByFeed.get(c.feed_id) ?? [];
+          if (arr.length >= 3) continue;
+          arr.push({
+            id: c.id,
+            content: c.content,
+            createdAt: c.created_at,
+            author: c.author
+              ? {
+                  id: c.author.id,
+                  nickname: c.author.nickname,
+                  profileImageUrl: c.author.profile_image_url,
+                }
+              : null,
+          });
+          commentsByFeed.set(c.feed_id, arr);
+        }
+        // reverse so the oldest of the latest 3 appears first (chronological)
+        for (const [k, arr] of commentsByFeed) {
+          commentsByFeed.set(k, arr.reverse());
+        }
+      }
+
+      return feedRows.map((r) => ({
         id: r.id,
         authorId: r.author_id,
         type: r.type,
@@ -161,6 +256,7 @@ export function useFeeds(currentUserId: string | undefined) {
         likeCount: r.feed_likes?.[0]?.count ?? 0,
         commentCount: r.feed_comments?.[0]?.count ?? 0,
         myLiked: mineSet.has(r.id),
+        recentComments: commentsByFeed.get(r.id) ?? [],
       }));
     },
   });
@@ -361,6 +457,7 @@ export function useFeed(feedId: string | undefined, currentUserId: string | unde
         likeCount: r.feed_likes?.[0]?.count ?? 0,
         commentCount: r.feed_comments?.[0]?.count ?? 0,
         myLiked,
+        recentComments: [],
       };
     },
   });

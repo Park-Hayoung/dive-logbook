@@ -1,13 +1,23 @@
+// Imports the brand palette from a single source so editing brand-tokens.js
+// updates both Tailwind classes (via tailwind.config.js) and direct JS usage.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const tokens = require("./brand-tokens") as { brand: BrandPalette };
+
+type BrandPalette = {
+  50: string;
+  100: string;
+  200: string;
+  400: string;
+  500: string;
+  600: string;
+  700: string;
+  900: string;
+  /** Foreground (text/icon) color for use on top of bg-brand-600. */
+  fg: string;
+};
+
 export const colors = {
-  brand: {
-    50: "#EFF6FF",
-    100: "#DBEAFE",
-    400: "#60A5FA",
-    500: "#3B82F6",
-    600: "#2563EB",
-    700: "#1D4ED8",
-    900: "#1E3A8A",
-  },
+  brand: tokens.brand,
   surface: {
     bg: "#F9FAFB",
     card: "#FFFFFF",
@@ -17,6 +27,6 @@ export const colors = {
     primary: "#111827",
     secondary: "#6B7280",
     muted: "#9CA3AF",
-    onBrand: "#FFFFFF",
+    onBrand: tokens.brand.fg,
   },
 } as const;

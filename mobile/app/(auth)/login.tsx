@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -40,7 +41,7 @@ export default function LoginScreen() {
       <KeyboardSafeScroll
         contentContainerStyle={{ justifyContent: "center", padding: 32 }}
       >
-        <Text className="text-3xl font-black text-brand-600 mb-2 text-center">
+        <Text className="text-3xl font-black text-brand-700 mb-2 text-center">
           DiveLog
         </Text>
         <Text className="text-sm text-gray-500 mb-12 text-center">
@@ -76,9 +77,9 @@ export default function LoginScreen() {
             className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.brand.fg} />
             ) : (
-              <Text className="text-white font-black">로그인</Text>
+              <Text className="text-brand-fg font-black">로그인</Text>
             )}
           </Pressable>
 

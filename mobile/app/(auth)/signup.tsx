@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -182,11 +183,11 @@ export default function SignupScreen() {
               }`}
             >
               {submitting ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.brand.fg} />
               ) : (
                 <Text
                   className={`font-black ${
-                    confirmValid ? "text-white" : "text-gray-400"
+                    confirmValid ? "text-brand-fg" : "text-gray-400"
                   }`}
                 >
                   가입하기
@@ -211,7 +212,7 @@ export default function SignupScreen() {
                 className={`font-black ${
                   (step === "email" && emailValid) ||
                   (step === "password" && checks.allPassed)
-                    ? "text-white"
+                    ? "text-brand-fg"
                     : "text-gray-400"
                 }`}
               >
@@ -248,7 +249,7 @@ function ProgressDots({ step }: { step: Step }) {
             height: 4,
             flex: 1,
             borderRadius: 2,
-            backgroundColor: i <= currentIdx ? "#2563EB" : "#E5E7EB",
+            backgroundColor: i <= currentIdx ? "#FFF44F" : "#E5E7EB",
           }}
         />
       ))}

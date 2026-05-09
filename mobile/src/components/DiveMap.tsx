@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { colors } from "@/src/lib/colors";
 import MapView, {
   Marker,
   PROVIDER_DEFAULT,
@@ -150,7 +151,7 @@ export function DiveMap({
             onPress={
               onMarkerPress ? () => onMarkerPress(m) : undefined
             }
-            pinColor="#2563EB"
+            pinColor={colors.brand[600]}
           />
         ))}
       </MapView>

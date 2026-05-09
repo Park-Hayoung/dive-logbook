@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -23,7 +24,10 @@ import {
   useIsFollowing,
   useToggleFollow,
 } from "@/src/hooks/use-follows";
-import { useInfiniteUserFeedsWithImages } from "@/src/hooks/use-feeds";
+import {
+  useInfiniteUserFeedsWithImages,
+  useUserFeedCount,
+} from "@/src/hooks/use-feeds";
 import { Avatar, FeedGrid } from "@/src/components";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
@@ -36,6 +40,7 @@ export default function PublicProfileScreen() {
   const isMe = !!myUserId && myUserId === id;
   const { data: profile, isLoading } = useProfile(id);
   const { data: counts } = useFollowCounts(id);
+  const { data: feedCount } = useUserFeedCount(id);
   const { data: isFollowing = false } = useIsFollowing(myUserId, id);
   const toggleFollow = useToggleFollow(myUserId);
 
@@ -121,49 +126,73 @@ export default function PublicProfileScreen() {
         onScroll={onScroll}
         scrollEventThrottle={200}
       >
-       <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-        <View className="bg-white p-6 rounded-3xl items-center mb-4">
-          <View className="mb-3">
+       <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
+        <View>
+          <View className="flex-row items-center">
             <Avatar
               uri={profile.profile_image_url}
               name={profile.nickname}
               size={80}
             />
-          </View>
-          <Text className="text-2xl font-black text-gray-900 mb-1">
-            {profile.nickname}
-          </Text>
-          <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full mb-3">
-            <Award size={12} color="#2563EB" />
-            <Text className="text-[10px] font-black text-brand-700">
-              {profile.diving_org ?? "—"} · {profile.certification ?? "—"}
-            </Text>
+
+            <View className="flex-1 ml-4">
+              <View className="flex-row mb-3">
+                <View className="flex-1 items-center">
+                  <Text
+                    className="text-base font-black text-gray-900"
+                    numberOfLines={1}
+                  >
+                    {profile.nickname}
+                  </Text>
+                </View>
+                <View className="flex-1" />
+                <View className="flex-1" />
+              </View>
+              <View className="flex-row">
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-black text-gray-900">
+                    {feedCount ?? 0}
+                  </Text>
+                  <Text className="text-sm text-gray-700 mt-1">게시물</Text>
+                </View>
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-black text-gray-900">
+                    {counts?.followers ?? 0}
+                  </Text>
+                  <Text className="text-sm text-gray-700 mt-1">팔로워</Text>
+                </View>
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-black text-gray-900">
+                    {counts?.following ?? 0}
+                  </Text>
+                  <Text className="text-sm text-gray-700 mt-1">팔로잉</Text>
+                </View>
+              </View>
+            </View>
           </View>
 
-          <View className="flex-row gap-6 mb-4">
-            <View className="items-center">
-              <Text className="text-base font-black text-gray-900">
-                {counts?.followers ?? 0}
-              </Text>
-              <Text className="text-[10px] text-gray-400 font-bold uppercase">
-                팔로워
-              </Text>
+          <View className="mt-4">
+            <View className="flex-row">
+              <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full">
+                <Award size={12} color={colors.brand[700]} />
+                <Text className="text-[10px] font-black text-brand-700">
+                  {profile.diving_org ?? "—"} · {profile.certification ?? "—"}
+                </Text>
+              </View>
             </View>
-            <View className="items-center">
-              <Text className="text-base font-black text-gray-900">
-                {counts?.following ?? 0}
+
+            {profile.bio ? (
+              <Text className="text-xs text-gray-600 leading-5 mt-2">
+                {profile.bio}
               </Text>
-              <Text className="text-[10px] text-gray-400 font-bold uppercase">
-                팔로잉
-              </Text>
-            </View>
+            ) : null}
           </View>
 
           {!isMe ? (
             <Pressable
               onPress={onToggleFollow}
               disabled={busy || !myUserId}
-              className={`flex-row items-center gap-2 px-5 py-3 rounded-2xl ${
+              className={`mt-4 flex-row items-center justify-center gap-2 py-2.5 rounded-xl ${
                 isFollowing ? "bg-gray-100" : "bg-brand-600"
               }`}
             >
@@ -175,24 +204,16 @@ export default function PublicProfileScreen() {
               ) : isFollowing ? (
                 <UserMinus size={14} color="#374151" />
               ) : (
-                <UserPlus size={14} color="#fff" />
+                <UserPlus size={14} color={colors.brand.fg} />
               )}
               <Text
-                className={`font-black text-sm ${
-                  isFollowing ? "text-gray-700" : "text-white"
+                className={`font-black text-xs ${
+                  isFollowing ? "text-gray-700" : "text-brand-fg"
                 }`}
               >
                 {isFollowing ? "팔로잉" : "팔로우"}
               </Text>
             </Pressable>
-          ) : (
-            <Text className="text-[10px] text-gray-400">내 프로필</Text>
-          )}
-
-          {profile.bio ? (
-            <Text className="text-xs text-gray-600 leading-5 text-center mt-3 px-2">
-              {profile.bio}
-            </Text>
           ) : null}
         </View>
 

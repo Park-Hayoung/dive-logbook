@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -20,6 +21,7 @@ import {
   X,
   Hourglass,
   Camera,
+  Pencil,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -183,6 +185,20 @@ export default function TeamDetailScreen() {
           <ChevronLeft size={22} color="#374151" />
         </Pressable>
         <Text className="font-black text-base flex-1">팀</Text>
+        {isLeader ? (
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/team/edit/[id]",
+                params: { id: id! },
+              })
+            }
+            hitSlop={8}
+            className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+          >
+            <Pencil size={16} color="#374151" />
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView
@@ -200,7 +216,7 @@ export default function TeamDetailScreen() {
                 width: 80,
                 height: 80,
                 borderRadius: 24,
-                backgroundColor: "#EFF6FF",
+                backgroundColor: colors.brand[50],
                 alignItems: "center",
                 justifyContent: "center",
                 overflow: "hidden",
@@ -213,7 +229,7 @@ export default function TeamDetailScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <Users size={32} color="#2563EB" />
+                <Users size={32} color={colors.brand[700]} />
               )}
             </View>
             {isLeader ? (
@@ -225,7 +241,7 @@ export default function TeamDetailScreen() {
                   width: 28,
                   height: 28,
                   borderRadius: 14,
-                  backgroundColor: "#2563EB",
+                  backgroundColor: colors.brand[600],
                   borderWidth: 2,
                   borderColor: "#FFFFFF",
                   alignItems: "center",
@@ -233,9 +249,9 @@ export default function TeamDetailScreen() {
                 }}
               >
                 {imageBusy ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.brand.fg} />
                 ) : (
-                  <Camera size={12} color="#fff" />
+                  <Camera size={12} color={colors.brand.fg} />
                 )}
               </View>
             ) : null}
@@ -259,11 +275,11 @@ export default function TeamDetailScreen() {
               className="flex-row items-center gap-2 bg-brand-600 px-5 py-3 rounded-2xl"
             >
               {requestJoin.isPending ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.brand.fg} />
               ) : (
-                <UserPlus size={14} color="#fff" />
+                <UserPlus size={14} color={colors.brand.fg} />
               )}
-              <Text className="text-white font-black text-sm">
+              <Text className="text-brand-fg font-black text-sm">
                 가입 신청
               </Text>
             </Pressable>
@@ -322,7 +338,7 @@ export default function TeamDetailScreen() {
                           className="w-9 h-9 rounded-full"
                         />
                       ) : (
-                        <Text className="text-sm font-black text-brand-600">
+                        <Text className="text-sm font-black text-brand-700">
                           {m.profile?.nickname?.charAt(0) ?? "?"}
                         </Text>
                       )}
@@ -386,7 +402,7 @@ export default function TeamDetailScreen() {
                       className="w-10 h-10 rounded-full"
                     />
                   ) : (
-                    <Text className="text-sm font-black text-brand-600">
+                    <Text className="text-sm font-black text-brand-700">
                       {m.profile?.nickname?.charAt(0) ?? "?"}
                     </Text>
                   )}

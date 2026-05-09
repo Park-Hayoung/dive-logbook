@@ -171,7 +171,7 @@ function FilterRow({ label, options, value, onPick, disabled }: FilterRowProps) 
               >
                 <Text
                   className={`text-xs font-bold ${
-                    value === opt ? "text-white" : "text-gray-700"
+                    value === opt ? "text-brand-fg" : "text-gray-700"
                   }`}
                 >
                   {opt}

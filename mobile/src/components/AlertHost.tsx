@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
+import { colors } from "@/src/lib/colors";
 import {
   _registerAlertListener,
   type AlertButton,
@@ -18,12 +19,12 @@ function resolveStyle(b: AlertButton): AlertButtonStyle {
 }
 
 const BUTTON_BG: Record<AlertButtonStyle, string> = {
-  default: "#2563EB",
+  default: colors.brand[600],
   destructive: "#EF4444",
   cancel: "#F3F4F6",
 };
 const BUTTON_FG: Record<AlertButtonStyle, string> = {
-  default: "#FFFFFF",
+  default: colors.brand.fg,
   destructive: "#FFFFFF",
   cancel: "#374151",
 };

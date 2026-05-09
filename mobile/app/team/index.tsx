@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -43,7 +44,7 @@ export default function TeamListScreen() {
           hitSlop={8}
           className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center"
         >
-          <Plus size={18} color="#2563EB" />
+          <Plus size={18} color={colors.brand[700]} />
         </Pressable>
       </View>
 
@@ -68,18 +69,18 @@ export default function TeamListScreen() {
                   className="w-12 h-12 rounded-2xl"
                 />
               ) : (
-                <Users size={20} color="#fff" />
+                <Users size={20} color={colors.brand.fg} />
               )}
             </View>
             <View className="flex-1">
-              <Text className="text-[10px] text-brand-100 font-black uppercase">
+              <Text className="text-[10px] text-brand-900 font-black uppercase">
                 내 팀 · {myTeam.role === "leader" ? "리더" : "멤버"}
               </Text>
-              <Text className="text-white font-black text-base">
+              <Text className="text-brand-fg font-black text-base">
                 {myTeam.team.name}
               </Text>
             </View>
-            <ChevronRight size={18} color="#fff" />
+            <ChevronRight size={18} color={colors.brand.fg} />
           </Pressable>
         ) : null}
 
@@ -126,7 +127,7 @@ export default function TeamListScreen() {
                       className="w-12 h-12 rounded-2xl"
                     />
                   ) : (
-                    <Users size={20} color="#2563EB" />
+                    <Users size={20} color={colors.brand[700]} />
                   )}
                 </View>
                 <View className="flex-1 min-w-0">

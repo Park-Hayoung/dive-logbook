@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -75,8 +76,8 @@ export default function EquipmentSearchScreen() {
               }
               className="mt-4 bg-brand-600 px-5 py-3 rounded-2xl flex-row items-center gap-2"
             >
-              <PlusCircle size={16} color="#fff" />
-              <Text className="text-white font-black text-sm">
+              <PlusCircle size={16} color={colors.brand.fg} />
+              <Text className="text-brand-fg font-black text-sm">
                 "{trimmed}" 직접 등록
               </Text>
             </Pressable>
@@ -122,7 +123,7 @@ export default function EquipmentSearchScreen() {
                   className="bg-white p-4 rounded-2xl border border-gray-100 flex-row items-center gap-3 active:bg-gray-50"
                 >
                   <View className="w-12 h-12 rounded-2xl bg-brand-50 items-center justify-center">
-                    <Anchor size={20} color="#2563EB" />
+                    <Anchor size={20} color={colors.brand[700]} />
                   </View>
                   <View className="flex-1 min-w-0">
                     <Text className="text-[10px] font-black text-brand-700 uppercase">
@@ -170,7 +171,7 @@ export default function EquipmentSearchScreen() {
                     )}
                   </View>
                   <View className="bg-brand-600 px-3 py-1.5 rounded-full">
-                    <Text className="text-white text-[10px] font-black">
+                    <Text className="text-brand-fg text-[10px] font-black">
                       등록
                     </Text>
                   </View>

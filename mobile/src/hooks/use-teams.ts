@@ -243,6 +243,25 @@ export function useUpdateTeam() {
   });
 }
 
+export function useDeleteTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (teamId: string) => {
+      const { error } = await supabase
+        .from("teams")
+        .delete()
+        .eq("id", teamId);
+      if (error) throw new Error(error.message || JSON.stringify(error));
+    },
+    onSuccess: (_data, teamId) => {
+      qc.invalidateQueries({ queryKey: ["teams"] });
+      qc.invalidateQueries({ queryKey: ["my-team"] });
+      qc.invalidateQueries({ queryKey: ["team", teamId] });
+      qc.invalidateQueries({ queryKey: ["team-members", teamId] });
+    },
+  });
+}
+
 export function useRequestJoinTeam(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({

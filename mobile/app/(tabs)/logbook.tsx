@@ -7,6 +7,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { useDives } from "@/src/hooks/use-dives";
 import { LogCard } from "@/src/components";
 
+import { colors } from "@/src/lib/colors";
 export default function LogbookScreen() {
   const userId = useAuthStore((s) => s.user?.id);
   const { data: dives, isLoading } = useDives(userId);
@@ -22,8 +23,8 @@ export default function LogbookScreen() {
             accessibilityLabel="다이브 컴퓨터에서 가져오기"
             className="flex-row items-center gap-1.5 bg-brand-600 px-3 py-2 rounded-xl active:scale-95"
           >
-            <Bluetooth size={14} color="#fff" />
-            <Text className="text-xs font-black text-white">가져오기</Text>
+            <Bluetooth size={14} color={colors.brand.fg} />
+            <Text className="text-xs font-black text-brand-fg">가져오기</Text>
           </Pressable>
         </View>
 

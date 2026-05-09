@@ -1,4 +1,5 @@
 import { View, Text } from "react-native";
+import { colors } from "@/src/lib/colors";
 import Svg, {
   Path,
   Line,
@@ -19,8 +20,8 @@ type Props = {
 const COLORS = {
   axis: "#D1D5DB",
   grid: "#F3F4F6",
-  curve: "#2563EB",
-  fill: "#2563EB",
+  curve: colors.brand[700],
+  fill: colors.brand[600],
   text: "#6B7280",
   marker: "#DC2626",
 };

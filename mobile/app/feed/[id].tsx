@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -229,7 +230,7 @@ export default function FeedDetailScreen() {
                     className="w-11 h-11 rounded-full"
                   />
                 ) : (
-                  <Text className="text-base font-black text-brand-600">
+                  <Text className="text-base font-black text-brand-700">
                     {initial}
                   </Text>
                 )}
@@ -299,7 +300,7 @@ export default function FeedDetailScreen() {
                 onPress={() => router.push(`/log/${feed.linkedDiveId}`)}
                 className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-2 rounded-xl mb-3"
               >
-                <Anchor size={12} color="#2563EB" />
+                <Anchor size={12} color={colors.brand[700]} />
                 <Text className="text-xs font-bold text-brand-700">
                   연결된 로그 보기
                 </Text>
@@ -370,7 +371,7 @@ export default function FeedDetailScreen() {
                           className="w-8 h-8 rounded-full"
                         />
                       ) : (
-                        <Text className="text-xs font-black text-brand-600">
+                        <Text className="text-xs font-black text-brand-700">
                           {c.author?.nickname?.charAt(0) ?? "?"}
                         </Text>
                       )}
@@ -446,9 +447,9 @@ export default function FeedDetailScreen() {
             }`}
           >
             {posting ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.brand.fg} />
             ) : (
-              <Send size={16} color="#fff" />
+              <Send size={16} color={colors.brand.fg} />
             )}
           </Pressable>
         </View>

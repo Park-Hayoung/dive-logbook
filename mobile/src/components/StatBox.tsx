@@ -22,7 +22,7 @@ export function StatBox({ label, value, unit, highlighted, icon }: StatBoxProps)
         {icon}
         <Text
           className={`text-[9px] font-black uppercase ${
-            highlighted ? "text-brand-100" : "text-gray-400"
+            highlighted ? "text-brand-fg" : "text-gray-400"
           }`}
         >
           {label}
@@ -30,7 +30,7 @@ export function StatBox({ label, value, unit, highlighted, icon }: StatBoxProps)
       </View>
       <Text
         className={`text-base font-black leading-none ${
-          highlighted ? "text-white" : "text-gray-900"
+          highlighted ? "text-brand-fg" : "text-gray-900"
         }`}
       >
         {value}

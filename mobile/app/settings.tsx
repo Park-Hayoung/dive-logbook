@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { colors } from "@/src/lib/colors";
 import {
   ChevronLeft,
   ChevronRight,
@@ -48,7 +49,7 @@ export default function SettingsScreen() {
           className="bg-white p-4 rounded-2xl flex-row items-center gap-3 mb-2"
         >
           <View className="w-10 h-10 rounded-2xl bg-brand-50 items-center justify-center">
-            <UserCog size={18} color="#2563EB" />
+            <UserCog size={18} color={colors.brand[700]} />
           </View>
           <View className="flex-1">
             <Text className="font-black text-sm text-gray-900">프로필 편집</Text>
@@ -74,7 +75,7 @@ export default function SettingsScreen() {
             className="bg-white p-4 rounded-2xl flex-row items-center gap-3 mb-2"
           >
             <View className="w-10 h-10 rounded-2xl bg-brand-50 items-center justify-center">
-              <Users size={18} color="#2563EB" />
+              <Users size={18} color={colors.brand[700]} />
             </View>
             <View className="flex-1">
               <Text className="text-[10px] font-black text-gray-400 uppercase">
@@ -109,7 +110,7 @@ export default function SettingsScreen() {
           className="bg-white p-4 rounded-2xl flex-row items-center gap-3 mb-2"
         >
           <View className="w-10 h-10 rounded-2xl bg-brand-50 items-center justify-center">
-            <Anchor size={18} color="#2563EB" />
+            <Anchor size={18} color={colors.brand[700]} />
           </View>
           <View className="flex-1">
             <Text className="font-black text-sm text-gray-900">장비 관리</Text>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -220,7 +221,7 @@ export default function LogDetailScreen() {
                 onPress={() => setShareOpen(true)}
                 className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
               >
-                <Share2 size={12} color="#2563EB" />
+                <Share2 size={12} color={colors.brand[700]} />
                 <Text className="text-[10px] font-black text-brand-700">
                   공유
                 </Text>
@@ -242,7 +243,7 @@ export default function LogDetailScreen() {
             </View>
           </View>
 
-          <Text className="text-xs font-black text-brand-600 bg-brand-50 self-start px-2 py-0.5 rounded-lg mb-3">
+          <Text className="text-xs font-black text-brand-700 bg-brand-50 self-start px-2 py-0.5 rounded-lg mb-3">
             DIVE #{dive.diveNumber}
           </Text>
           <Text className="text-3xl font-black text-gray-900">
@@ -251,8 +252,8 @@ export default function LogDetailScreen() {
           <Text className="text-sm text-gray-500 mt-1">{dive.country}</Text>
           {dive.point ? (
             <View className="flex-row items-center gap-1.5 mt-3">
-              <Anchor size={14} color="#2563EB" />
-              <Text className="text-sm font-bold text-brand-600">
+              <Anchor size={14} color={colors.brand[700]} />
+              <Text className="text-sm font-bold text-brand-700">
                 {dive.point}
               </Text>
             </View>
@@ -275,7 +276,7 @@ export default function LogDetailScreen() {
                 value={dive.maxDepth.toFixed(1)}
                 unit="m"
                 highlighted
-                icon={<Navigation size={10} color="#DBEAFE" />}
+                icon={<Navigation size={10} color={colors.brand.fg} />}
               />
             </View>
             <View className="flex-1">
@@ -473,7 +474,7 @@ export default function LogDetailScreen() {
                     className="flex-row items-center gap-2 bg-brand-50 border border-brand-100 rounded-2xl px-3 py-2"
                   >
                     <View className="w-7 h-7 rounded-lg bg-white items-center justify-center">
-                      <Anchor size={13} color="#2563EB" />
+                      <Anchor size={13} color={colors.brand[700]} />
                     </View>
                     <View>
                       <Text className="text-[9px] font-black text-brand-700 uppercase">
@@ -540,9 +541,9 @@ export default function LogDetailScreen() {
               className="bg-brand-600 p-4 rounded-2xl items-center"
             >
               {sharing ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.brand.fg} />
               ) : (
-                <Text className="text-white font-black">올리기</Text>
+                <Text className="text-brand-fg font-black">올리기</Text>
               )}
             </Pressable>
           </View>

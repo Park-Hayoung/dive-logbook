@@ -3,6 +3,7 @@
 // 깊이/시간/시작 시각/수온/탱크 압력은 변조 방지를 위해 readonly.
 
 import { useEffect, useMemo, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -509,7 +510,7 @@ export default function EditLogScreen() {
                   />
                   <Text
                     className={`text-[10px] font-black ${
-                      active ? "text-white" : "text-gray-700"
+                      active ? "text-brand-fg" : "text-gray-700"
                     }`}
                   >
                     {label}
@@ -538,7 +539,7 @@ export default function EditLogScreen() {
                 >
                   <Text
                     className={`text-[11px] font-black ${
-                      active ? "text-white" : "text-gray-700"
+                      active ? "text-brand-fg" : "text-gray-700"
                     }`}
                   >
                     {label}
@@ -575,7 +576,7 @@ export default function EditLogScreen() {
                   />
                   <Text
                     className={`text-[9px] font-black mt-0.5 ${
-                      active ? "text-white" : "text-gray-700"
+                      active ? "text-brand-fg" : "text-gray-700"
                     }`}
                   >
                     {label}
@@ -617,7 +618,7 @@ export default function EditLogScreen() {
                   />
                   <Text
                     className={`text-[10px] font-black ${
-                      active ? "text-white" : "text-gray-700"
+                      active ? "text-brand-fg" : "text-gray-700"
                     }`}
                   >
                     {label}
@@ -657,9 +658,9 @@ export default function EditLogScreen() {
           className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.brand.fg} />
           ) : (
-            <Text className="text-white font-black">저장</Text>
+            <Text className="text-brand-fg font-black">저장</Text>
           )}
         </Pressable>
       </KeyboardSafeScroll>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -262,7 +263,7 @@ export default function RegisterEquipmentScreen() {
                         >
                           <Text
                             className={`text-xs font-black ${
-                              active ? "text-white" : "text-gray-700"
+                              active ? "text-brand-fg" : "text-gray-700"
                             }`}
                           >
                             {CATEGORY_LABEL[c]}
@@ -314,9 +315,9 @@ export default function RegisterEquipmentScreen() {
               className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
             >
               {submitting ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.brand.fg} />
               ) : (
-                <Text className="text-white font-black">
+                <Text className="text-brand-fg font-black">
                   {isEdit ? "저장" : "등록"}
                 </Text>
               )}

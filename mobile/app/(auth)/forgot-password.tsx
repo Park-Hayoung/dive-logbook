@@ -4,6 +4,7 @@
 // 그 시점부터 임시 세션이 활성. 거기서 새 비밀번호로 updateUser 호출.
 
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -114,7 +115,7 @@ export default function ForgotPasswordScreen() {
             onPress={() => router.replace("/(auth)/login")}
             className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
           >
-            <Text className="text-white font-black">로그인 화면으로</Text>
+            <Text className="text-brand-fg font-black">로그인 화면으로</Text>
           </Pressable>
         ) : (
           <Pressable
@@ -125,11 +126,11 @@ export default function ForgotPasswordScreen() {
             }`}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.brand.fg} />
             ) : (
               <Text
                 className={`font-black ${
-                  emailValid ? "text-white" : "text-gray-400"
+                  emailValid ? "text-brand-fg" : "text-gray-400"
                 }`}
               >
                 재설정 링크 보내기

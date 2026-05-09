@@ -23,7 +23,7 @@ export function LogCard({ dive }: LogCardProps) {
       )}
       <View className="flex-1 min-w-0">
         <View className="flex-row justify-between items-start mb-1">
-          <Text className="text-[10px] text-brand-600 font-black bg-brand-50 px-2 py-0.5 rounded-lg">
+          <Text className="text-[10px] text-brand-700 font-black bg-brand-50 px-2 py-0.5 rounded-lg">
             #{dive.diveNumber}
           </Text>
           <Text className="text-[10px] text-gray-400 font-bold">

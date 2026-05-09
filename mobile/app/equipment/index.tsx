@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -99,7 +100,7 @@ export default function EquipmentListScreen() {
           hitSlop={8}
           className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center"
         >
-          <Plus size={18} color="#2563EB" />
+          <Plus size={18} color={colors.brand[700]} />
         </Pressable>
       </View>
 
@@ -133,7 +134,7 @@ export default function EquipmentListScreen() {
                     className="px-4 py-4 flex-row items-center gap-3 active:bg-gray-50"
                   >
                     <View className="w-10 h-10 rounded-2xl bg-brand-50 items-center justify-center">
-                      <Anchor size={18} color="#2563EB" />
+                      <Anchor size={18} color={colors.brand[700]} />
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="font-black text-sm text-gray-900">
@@ -166,7 +167,7 @@ export default function EquipmentListScreen() {
                                   className="w-11 h-11"
                                 />
                               ) : (
-                                <Anchor size={18} color="#2563EB" />
+                                <Anchor size={18} color={colors.brand[700]} />
                               )}
                             </View>
                             <View className="flex-1 min-w-0">

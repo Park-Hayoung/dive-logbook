@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { colors } from "@/src/lib/colors";
 import {
   Map as MapIcon,
   MapPin,
@@ -178,7 +179,7 @@ export default function HomeScreen() {
                   value={totalDives}
                   unit="회"
                   highlighted
-                  icon={<BarChart3 size={10} color="#DBEAFE" />}
+                  icon={<BarChart3 size={10} color={colors.brand.fg} />}
                 />
               </View>
               <View className="flex-1">
@@ -294,7 +295,7 @@ export default function HomeScreen() {
         >
           <View className="flex-row items-center gap-4">
             <View className="w-14 h-14 bg-brand-600 rounded-3xl items-center justify-center">
-              <MapIcon size={28} color="white" />
+              <MapIcon size={28} color={colors.brand.fg} />
             </View>
             <View>
               <Text className="text-white font-black text-base">
@@ -317,8 +318,8 @@ export default function HomeScreen() {
             className="flex-row items-center gap-1"
             hitSlop={8}
           >
-            <Plus size={12} color="#2563EB" />
-            <Text className="text-[10px] font-bold text-brand-600">추가</Text>
+            <Plus size={12} color={colors.brand[700]} />
+            <Text className="text-[10px] font-bold text-brand-700">추가</Text>
           </Pressable>
         </View>
 
@@ -339,7 +340,7 @@ export default function HomeScreen() {
             className="bg-white p-6 rounded-3xl items-center border border-dashed border-gray-200 mb-6"
           >
             <View className="w-12 h-12 rounded-full bg-brand-50 items-center justify-center mb-2">
-              <CalendarDays size={20} color="#2563EB" />
+              <CalendarDays size={20} color={colors.brand[700]} />
             </View>
             <Text className="text-sm font-black text-gray-900">
               다이빙 일정을 추가해보세요
@@ -396,7 +397,7 @@ export default function HomeScreen() {
           </Text>
           {recentDives.length > 0 ? (
             <Pressable onPress={() => router.push("/(tabs)/logbook")}>
-              <Text className="text-[10px] font-bold text-brand-600">
+              <Text className="text-[10px] font-bold text-brand-700">
                 전체 보기
               </Text>
             </Pressable>
@@ -413,7 +414,7 @@ export default function HomeScreen() {
             className="bg-white p-6 rounded-3xl items-center border border-dashed border-gray-200"
           >
             <View className="w-12 h-12 rounded-full bg-brand-50 items-center justify-center mb-2">
-              <Plus size={20} color="#2563EB" />
+              <Plus size={20} color={colors.brand[700]} />
             </View>
             <Text className="text-sm font-black text-gray-900">
               첫 다이브를 기록해보세요

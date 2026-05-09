@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -133,7 +134,7 @@ export default function FeedScreen() {
         className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-brand-600 items-center justify-center shadow-lg active:scale-95"
         accessibilityLabel="새 글 작성"
       >
-        <Pencil size={22} color="#fff" />
+        <Pencil size={22} color={colors.brand.fg} />
       </Pressable>
     </SafeAreaView>
   );

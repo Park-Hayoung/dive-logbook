@@ -24,7 +24,7 @@ export function Avatar({ uri, name, size = 40 }: Props) {
       ) : (
         <Text
           style={{ fontSize }}
-          className="font-black text-brand-600"
+          className="font-black text-brand-700"
         >
           {initial}
         </Text>

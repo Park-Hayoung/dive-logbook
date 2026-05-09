@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -112,7 +113,7 @@ export default function OnboardingScreen() {
               hitSlop={6}
               className="flex-row items-center gap-1 bg-brand-50 px-2.5 py-1 rounded-full"
             >
-              <Shuffle size={11} color="#2563EB" />
+              <Shuffle size={11} color={colors.brand[700]} />
               <Text className="text-[10px] font-black text-brand-700">
                 자동 생성
               </Text>
@@ -149,7 +150,7 @@ export default function OnboardingScreen() {
               >
                 <Text
                   className={`text-xs font-bold ${
-                    certification === c ? "text-white" : "text-gray-700"
+                    certification === c ? "text-brand-fg" : "text-gray-700"
                   }`}
                 >
                   {c}
@@ -175,7 +176,7 @@ export default function OnboardingScreen() {
               >
                 <Text
                   className={`text-xs font-bold ${
-                    divingOrg === o ? "text-white" : "text-gray-700"
+                    divingOrg === o ? "text-brand-fg" : "text-gray-700"
                   }`}
                 >
                   {o}
@@ -206,9 +207,9 @@ export default function OnboardingScreen() {
           className="bg-brand-600 p-4 rounded-2xl items-center mt-4"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.brand.fg} />
           ) : (
-            <Text className="text-white font-black">시작하기</Text>
+            <Text className="text-brand-fg font-black">시작하기</Text>
           )}
         </Pressable>
       </KeyboardSafeScroll>

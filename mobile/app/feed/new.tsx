@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -182,9 +183,9 @@ export default function NewFeedScreen() {
           className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.brand.fg} />
           ) : (
-            <Text className="text-white font-black">올리기</Text>
+            <Text className="text-brand-fg font-black">올리기</Text>
           )}
         </Pressable>
 

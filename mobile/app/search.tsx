@@ -104,7 +104,7 @@ export default function SearchScreen() {
                         className="w-11 h-11 rounded-full"
                       />
                     ) : (
-                      <Text className="text-base font-black text-brand-600">
+                      <Text className="text-base font-black text-brand-700">
                         {p.nickname.charAt(0)}
                       </Text>
                     )}

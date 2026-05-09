@@ -6,6 +6,7 @@
 // API 키 미설정/캡 도달 시 검색은 비활성화되지만 1+3 은 항상 동작 → graceful degradation.
 
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -87,9 +88,9 @@ export function LocationField({ value, onChange, disabled }: Props) {
             className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
           >
             {gpsBusy ? (
-              <ActivityIndicator size="small" color="#2563EB" />
+              <ActivityIndicator size="small" color={colors.brand[700]} />
             ) : (
-              <MapPin size={12} color="#2563EB" />
+              <MapPin size={12} color={colors.brand[700]} />
             )}
             <Text className="text-[10px] font-black text-brand-700">
               내 위치
@@ -104,7 +105,7 @@ export function LocationField({ value, onChange, disabled }: Props) {
           >
             <Search
               size={12}
-              color={placesApiConfigured ? "#2563EB" : "#9CA3AF"}
+              color={placesApiConfigured ? "#FFF44F" : "#9CA3AF"}
             />
             <Text
               className={`text-[10px] font-black ${
@@ -299,9 +300,9 @@ function SearchModal({
               className="bg-brand-600 px-4 rounded-2xl items-center justify-center"
             >
               {busy ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.brand.fg} />
               ) : (
-                <Search size={18} color="#fff" />
+                <Search size={18} color={colors.brand.fg} />
               )}
             </Pressable>
           </View>

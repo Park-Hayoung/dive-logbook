@@ -63,6 +63,21 @@ export type FeedThumb = {
 
 const FEED_GRID_PAGE_SIZE = 30;
 
+export function useUserFeedCount(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["user-feed-count", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await supabase
+        .from("feeds")
+        .select("id", { count: "exact", head: true })
+        .eq("author_id", userId!);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
 export function useInfiniteUserFeedsWithImages(userId: string | undefined) {
   return useInfiniteQuery({
     queryKey: ["user-feeds-with-images", userId],

@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -191,7 +192,7 @@ function NotificationRow({
               className="w-11 h-11 rounded-full"
             />
           ) : (
-            <Text className="text-base font-black text-brand-600">
+            <Text className="text-base font-black text-brand-700">
               {initial}
             </Text>
           )}
@@ -227,7 +228,7 @@ function describe(n: Notification): {
       };
     case "comment":
       return {
-        icon: <MessageCircle size={11} color="#2563EB" />,
+        icon: <MessageCircle size={11} color={colors.brand[700]} />,
         message: `${name}님이 댓글을 남겼어요${
           n.commentContent ? `: ${n.commentContent}` : ""
         }`,

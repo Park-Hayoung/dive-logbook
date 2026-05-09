@@ -8,6 +8,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { useDives } from "@/src/hooks/use-dives";
 import { DiveMap, buildDiveMarkers, type DiveMarker } from "@/src/components";
 
+import { colors } from "@/src/lib/colors";
 export default function DiveMapScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
@@ -65,7 +66,7 @@ export default function DiveMapScreen() {
       ) : markers.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <View className="w-16 h-16 rounded-full bg-brand-50 items-center justify-center mb-3">
-            <MapPin size={28} color="#2563EB" />
+            <MapPin size={28} color={colors.brand[700]} />
           </View>
           <Text className="text-sm font-black text-gray-900 mb-1">
             지도에 표시할 다이브가 없어요
@@ -95,7 +96,7 @@ export default function DiveMapScreen() {
             <View className="absolute left-4 right-4 bottom-6 bg-white rounded-3xl border border-gray-100 shadow-lg">
               <View className="px-5 pt-4 pb-2 flex-row items-start justify-between gap-3">
                 <View className="flex-1 min-w-0">
-                  <Text className="text-xs font-black text-brand-600 uppercase">
+                  <Text className="text-xs font-black text-brand-700 uppercase">
                     선택한 포인트
                   </Text>
                   <Text

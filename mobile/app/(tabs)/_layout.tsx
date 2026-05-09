@@ -31,7 +31,7 @@ function TabItem({ Icon, label, focused }: TabIconProps) {
         }}
       >
         <Icon
-          color={focused ? colors.brand[600] : colors.text.muted}
+          color={focused ? colors.brand[700] : colors.text.muted}
           size={20}
           strokeWidth={focused ? 2.5 : 2}
         />
@@ -125,7 +125,7 @@ export default function TabLayout() {
                 }}
                 className="active:scale-95"
               >
-                <Plus color="#fff" size={26} strokeWidth={3} />
+                <Plus color={colors.brand.fg} size={26} strokeWidth={3} />
               </Pressable>
             </View>
           ),

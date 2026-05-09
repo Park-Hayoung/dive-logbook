@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -129,9 +130,9 @@ export default function ProfileEditScreen() {
             />
             <View className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-600 items-center justify-center border-2 border-white">
               {uploadAvatar.isPending ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.brand.fg} />
               ) : (
-                <Camera size={14} color="#fff" />
+                <Camera size={14} color={colors.brand.fg} />
               )}
             </View>
           </Pressable>
@@ -172,9 +173,9 @@ export default function ProfileEditScreen() {
           className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.brand.fg} />
           ) : (
-            <Text className="text-white font-black">저장</Text>
+            <Text className="text-brand-fg font-black">저장</Text>
           )}
         </Pressable>
 

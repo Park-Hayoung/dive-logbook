@@ -109,7 +109,7 @@ export function DateField({
               }}
               className="bg-brand-600 mx-1 mt-1 p-3 rounded-xl items-center"
             >
-              <Text className="text-white font-black text-sm">확인</Text>
+              <Text className="text-brand-fg font-black text-sm">확인</Text>
             </Pressable>
           ) : null}
         </View>

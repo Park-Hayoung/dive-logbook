@@ -8,7 +8,11 @@ import { Award, Camera, Settings } from "lucide-react-native";
 import { useAuthStore } from "@/src/store/auth-store";
 import { useProfile } from "@/src/hooks/use-profile";
 import { useFollowCounts } from "@/src/hooks/use-follows";
-import { useInfiniteUserFeedsWithImages } from "@/src/hooks/use-feeds";
+import { colors } from "@/src/lib/colors";
+import {
+  useInfiniteUserFeedsWithImages,
+  useUserFeedCount,
+} from "@/src/hooks/use-feeds";
 import { Avatar, FeedGrid } from "@/src/components";
 
 export default function ProfileScreen() {
@@ -18,6 +22,7 @@ export default function ProfileScreen() {
 
   const { data: profile } = useProfile(userId);
   const { data: followCounts } = useFollowCounts(userId);
+  const { data: feedCount } = useUserFeedCount(userId);
 
   const {
     data: feedPages,
@@ -61,69 +66,98 @@ export default function ProfileScreen() {
         onScroll={onScroll}
         scrollEventThrottle={200}
       >
-       <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-        <View className="bg-white p-6 rounded-3xl items-center mb-4">
-          <Pressable
-            onPress={() => router.push("/profile/edit" as never)}
-            style={{ width: 80, height: 80, marginBottom: 12 }}
-          >
-            <Avatar
-              uri={profile?.profile_image_url}
-              name={profile?.nickname ?? "Diver"}
-              size={80}
-            />
-            <View
-              style={{
-                position: "absolute",
-                bottom: -2,
-                right: -2,
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: "#2563EB",
-                borderWidth: 2,
-                borderColor: "#FFFFFF",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
+        <View>
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={() => router.push("/profile/edit" as never)}
+              style={{ width: 80, height: 80 }}
             >
-              <Camera size={12} color="#fff" />
-            </View>
-          </Pressable>
-          <Text className="text-2xl font-black text-gray-900 mb-1">
-            {profile?.nickname ?? "Diver"}
-          </Text>
-          <Text className="text-xs text-gray-500 mb-3">{user?.email}</Text>
-          <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full mb-3">
-            <Award size={12} color="#2563EB" />
-            <Text className="text-[10px] font-black text-brand-700">
-              {profile?.diving_org ?? "—"} · {profile?.certification ?? "—"}
-            </Text>
-          </View>
-          <View className="flex-row gap-6">
-            <View className="items-center">
-              <Text className="text-base font-black text-gray-900">
-                {followCounts?.followers ?? 0}
-              </Text>
-              <Text className="text-[10px] text-gray-400 font-bold uppercase">
-                팔로워
-              </Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-base font-black text-gray-900">
-                {followCounts?.following ?? 0}
-              </Text>
-              <Text className="text-[10px] text-gray-400 font-bold uppercase">
-                팔로잉
-              </Text>
+              <Avatar
+                uri={profile?.profile_image_url}
+                name={profile?.nickname ?? "Diver"}
+                size={80}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: colors.brand[600],
+                  borderWidth: 2,
+                  borderColor: "#FFFFFF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Camera size={12} color={colors.brand.fg} />
+              </View>
+            </Pressable>
+
+            <View className="flex-1 ml-4">
+              <View className="flex-row mb-3">
+                <View className="flex-1 items-center">
+                  <Text
+                    className="text-base font-black text-gray-900"
+                    numberOfLines={1}
+                  >
+                    {profile?.nickname ?? "Diver"}
+                  </Text>
+                </View>
+                <View className="flex-1" />
+                <View className="flex-1" />
+              </View>
+              <View className="flex-row">
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-black text-gray-900">
+                    {feedCount ?? 0}
+                  </Text>
+                  <Text className="text-sm text-gray-700 mt-1">게시물</Text>
+                </View>
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-black text-gray-900">
+                    {followCounts?.followers ?? 0}
+                  </Text>
+                  <Text className="text-sm text-gray-700 mt-1">팔로워</Text>
+                </View>
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-black text-gray-900">
+                    {followCounts?.following ?? 0}
+                  </Text>
+                  <Text className="text-sm text-gray-700 mt-1">팔로잉</Text>
+                </View>
+              </View>
             </View>
           </View>
 
-          {profile?.bio ? (
-            <Text className="text-xs text-gray-600 leading-5 text-center mt-3 px-2">
-              {profile.bio}
+          <View className="mt-4">
+            <View className="flex-row">
+              <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full">
+                <Award size={12} color={colors.brand[700]} />
+                <Text className="text-[10px] font-black text-brand-700">
+                  {profile?.diving_org ?? "—"} · {profile?.certification ?? "—"}
+                </Text>
+              </View>
+            </View>
+
+            {profile?.bio ? (
+              <Text className="text-xs text-gray-600 leading-5 mt-2">
+                {profile.bio}
+              </Text>
+            ) : null}
+          </View>
+
+          <Pressable
+            onPress={() => router.push("/profile/edit" as never)}
+            className="mt-4 bg-gray-100 py-2.5 rounded-xl items-center"
+          >
+            <Text className="text-xs font-black text-gray-700">
+              프로필 편집
             </Text>
-          ) : null}
+          </Pressable>
         </View>
        </View>
 

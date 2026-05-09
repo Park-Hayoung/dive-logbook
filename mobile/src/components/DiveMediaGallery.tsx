@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -125,9 +126,9 @@ export function DiveMediaGallery({ diveId }: Props) {
           className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
         >
           {busy ? (
-            <ActivityIndicator size="small" color="#2563EB" />
+            <ActivityIndicator size="small" color={colors.brand[700]} />
           ) : (
-            <ImagePlus size={12} color="#2563EB" />
+            <ImagePlus size={12} color={colors.brand[700]} />
           )}
           <Text className="text-[10px] font-black text-brand-700">
             {busy ? "업로드 중" : "추가"}

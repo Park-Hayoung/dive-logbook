@@ -142,7 +142,7 @@ export function FeedMediaCarousel({
               width: 6,
               height: 6,
               borderRadius: 3,
-              backgroundColor: i === page ? "#2563EB" : "#D1D5DB",
+              backgroundColor: i === page ? "#665900" : "#D1D5DB",
             }}
           />
         ))}

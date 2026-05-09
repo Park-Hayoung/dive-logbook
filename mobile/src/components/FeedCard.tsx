@@ -90,7 +90,7 @@ export function FeedCard({
               className="w-10 h-10 rounded-full"
             />
           ) : (
-            <Text className="text-base font-black text-brand-600">
+            <Text className="text-base font-black text-brand-700">
               {initial}
             </Text>
           )}

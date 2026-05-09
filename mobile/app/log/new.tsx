@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -598,7 +599,7 @@ export default function NewLogScreen() {
                   />
                   <Text
                     className={`text-[10px] font-black ${
-                      active ? "text-white" : "text-gray-700"
+                      active ? "text-brand-fg" : "text-gray-700"
                     }`}
                   >
                     {label}
@@ -627,7 +628,7 @@ export default function NewLogScreen() {
                 >
                   <Text
                     className={`text-[11px] font-black ${
-                      active ? "text-white" : "text-gray-700"
+                      active ? "text-brand-fg" : "text-gray-700"
                     }`}
                   >
                     {label}
@@ -665,7 +666,7 @@ export default function NewLogScreen() {
                     />
                     <Text
                       className={`text-[9px] font-black mt-0.5 ${
-                        active ? "text-white" : "text-gray-700"
+                        active ? "text-brand-fg" : "text-gray-700"
                       }`}
                     >
                       {label}
@@ -710,7 +711,7 @@ export default function NewLogScreen() {
                   />
                   <Text
                     className={`text-[10px] font-black ${
-                      active ? "text-white" : "text-gray-700"
+                      active ? "text-brand-fg" : "text-gray-700"
                     }`}
                   >
                     {label}
@@ -738,7 +739,7 @@ export default function NewLogScreen() {
                 disabled={submitting}
                 className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
               >
-                <ImagePlus size={12} color="#2563EB" />
+                <ImagePlus size={12} color={colors.brand[700]} />
                 <Text className="text-[10px] font-black text-brand-700">
                   사진
                 </Text>
@@ -748,7 +749,7 @@ export default function NewLogScreen() {
                 disabled={submitting}
                 className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
               >
-                <VideoIcon size={12} color="#2563EB" />
+                <VideoIcon size={12} color={colors.brand[700]} />
                 <Text className="text-[10px] font-black text-brand-700">
                   영상
                 </Text>
@@ -819,15 +820,15 @@ export default function NewLogScreen() {
         >
           {submitting ? (
             <View className="flex-row items-center gap-2">
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.brand.fg} />
               {uploadStatus ? (
-                <Text className="text-white text-xs font-black">
+                <Text className="text-brand-fg text-xs font-black">
                   {uploadStatus}
                 </Text>
               ) : null}
             </View>
           ) : (
-            <Text className="text-white font-black">저장</Text>
+            <Text className="text-brand-fg font-black">저장</Text>
           )}
         </Pressable>
       </KeyboardSafeScroll>

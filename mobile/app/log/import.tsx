@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -269,13 +270,13 @@ export default function ImportScreen() {
           </Text>
           <View className="flex-row items-center gap-2">
             {isBusy ? (
-              <ActivityIndicator size="small" color="#2563EB" />
+              <ActivityIndicator size="small" color={colors.brand[700]} />
             ) : phase === "error" ? (
               <AlertCircle size={16} color="#DC2626" />
             ) : phase === "done" ? (
               <CheckCircle2 size={16} color="#059669" />
             ) : (
-              <Bluetooth size={16} color="#2563EB" />
+              <Bluetooth size={16} color={colors.brand[700]} />
             )}
             <Text className="text-sm font-black text-gray-900">
               {phaseLabel[phase]}
@@ -298,7 +299,7 @@ export default function ImportScreen() {
               onPress={handleStart}
               className="bg-brand-600 p-4 rounded-2xl items-center active:scale-95"
             >
-              <Text className="text-white font-black">스캔 시작</Text>
+              <Text className="text-brand-fg font-black">스캔 시작</Text>
             </Pressable>
           </View>
         ) : null}
@@ -334,7 +335,7 @@ export default function ImportScreen() {
                 }
                 disabled={phase === "downloading"}
               >
-                <Text className="text-xs font-black text-brand-600">
+                <Text className="text-xs font-black text-brand-700">
                   {selected.size === manifest.length ? "전체 해제" : "전체 선택"}
                 </Text>
               </Pressable>
@@ -356,7 +357,7 @@ export default function ImportScreen() {
                     {savedEntry ? (
                       <CheckCircle2 size={18} color="#059669" />
                     ) : isSel ? (
-                      <CheckCircle2 size={18} color="#2563EB" />
+                      <CheckCircle2 size={18} color={colors.brand[700]} />
                     ) : (
                       <Circle size={18} color="#9CA3AF" />
                     )}
@@ -392,8 +393,8 @@ export default function ImportScreen() {
               selected.size === 0 ? "bg-gray-200" : "bg-brand-600 active:scale-95"
             }`}
           >
-            <Download size={16} color="#fff" />
-            <Text className="text-white font-black">
+            <Download size={16} color={colors.brand.fg} />
+            <Text className="text-brand-fg font-black">
               {selected.size}개 다운로드
             </Text>
           </Pressable>

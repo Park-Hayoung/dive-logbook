@@ -6,6 +6,7 @@
 // 보유 장비가 100+개라도 검색으로 빠르게 찾도록 설계.
 
 import { useMemo, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -62,7 +63,7 @@ export function EquipmentPickerField({
                 className="flex-row items-center gap-2 bg-brand-50 border border-brand-200 rounded-2xl pl-3 pr-2 py-2"
               >
                 <View className="w-7 h-7 rounded-lg bg-white items-center justify-center">
-                  <Anchor size={14} color="#2563EB" />
+                  <Anchor size={14} color={colors.brand[700]} />
                 </View>
                 <View>
                   <Text className="text-[9px] font-black text-brand-700 uppercase">
@@ -256,7 +257,7 @@ export function EquipmentPickerModal({
                     }`}
                   >
                     <View className="w-10 h-10 rounded-xl bg-brand-50 items-center justify-center">
-                      <Anchor size={18} color="#2563EB" />
+                      <Anchor size={18} color={colors.brand[700]} />
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="text-[10px] font-black text-brand-700 uppercase">
@@ -277,7 +278,7 @@ export function EquipmentPickerModal({
                     </View>
                     {checked ? (
                       <View className="bg-brand-600 px-2 py-1 rounded-full">
-                        <Text className="text-white text-[10px] font-black">
+                        <Text className="text-brand-fg text-[10px] font-black">
                           선택됨
                         </Text>
                       </View>
@@ -313,7 +314,7 @@ export function EquipmentPickerModal({
                     >
                       <Text
                         className={`text-[11px] font-black ${
-                          active ? "text-white" : "text-gray-700"
+                          active ? "text-brand-fg" : "text-gray-700"
                         }`}
                       >
                         {CATEGORY_LABEL[c]}
@@ -361,9 +362,9 @@ export function EquipmentPickerModal({
                 }`}
               >
                 {creating ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={colors.brand.fg} size="small" />
                 ) : (
-                  <Text className="text-xs font-black text-white">
+                  <Text className="text-xs font-black text-brand-fg">
                     추가하고 선택
                   </Text>
                 )}
@@ -381,7 +382,7 @@ export function EquipmentPickerModal({
             }}
             className="bg-white p-4 border-t border-gray-200 flex-row items-center justify-center gap-1.5"
           >
-            <Plus size={14} color="#2563EB" />
+            <Plus size={14} color={colors.brand[700]} />
             <Text className="text-xs font-black text-brand-700">
               {query.trim()
                 ? `"${query.trim()}" 직접 추가`
@@ -414,7 +415,7 @@ function CategoryChip({
     >
       <Text
         className={`text-[11px] font-black ${
-          active ? "text-white" : "text-gray-700"
+          active ? "text-brand-fg" : "text-gray-700"
         }`}
       >
         {label}

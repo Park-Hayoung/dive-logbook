@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { colors } from "@/src/lib/colors";
 import {
   View,
   Text,
@@ -125,7 +126,7 @@ export default function NewTeamScreen() {
                 width: 96,
                 height: 96,
                 borderRadius: 28,
-                backgroundColor: "#EFF6FF",
+                backgroundColor: colors.brand[50],
                 alignItems: "center",
                 justifyContent: "center",
                 overflow: "hidden",
@@ -138,7 +139,7 @@ export default function NewTeamScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <Users size={32} color="#2563EB" />
+                <Users size={32} color={colors.brand[700]} />
               )}
             </View>
             <View
@@ -149,14 +150,14 @@ export default function NewTeamScreen() {
                 width: 32,
                 height: 32,
                 borderRadius: 16,
-                backgroundColor: "#2563EB",
+                backgroundColor: colors.brand[600],
                 borderWidth: 2,
                 borderColor: "#FFFFFF",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Camera size={14} color="#fff" />
+              <Camera size={14} color={colors.brand.fg} />
             </View>
           </Pressable>
         </View>
@@ -194,9 +195,9 @@ export default function NewTeamScreen() {
           className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.brand.fg} />
           ) : (
-            <Text className="text-white font-black">팀 만들기</Text>
+            <Text className="text-brand-fg font-black">팀 만들기</Text>
           )}
         </Pressable>
       </KeyboardSafeScroll>

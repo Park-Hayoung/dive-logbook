@@ -186,7 +186,7 @@ export default function RegisterEquipmentScreen() {
         bottomPadding={120}
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-2xl font-black text-gray-900">
+          <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900">
             {isEdit ? "장비 수정" : "장비 등록"}
           </Text>
           <Pressable

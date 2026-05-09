@@ -72,6 +72,12 @@
         }
       ],
       "expo-build-properties",
+      [
+        "expo-font",
+        {
+          "fonts": ["./assets/fonts/KCCDodamdodam.ttf"]
+        }
+      ],
       "react-native-compressor",
       "expo-secure-store",
       "expo-web-browser",

@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Redirect, Stack, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -20,6 +21,17 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  // Non-blocking: load font async — app renders immediately with system font,
+  // then re-renders with KCC도담도담 when load completes. Avoids OOM/white-screen
+  // if the font asset fails to load on dev builds.
+  // Plugin (app.json: expo-font) embeds the font natively at build time.
+  // useFonts here is a runtime fallback (e.g., after fast-refresh).
+  // Title text uses inline `fontFamily: "KCCDodamdodam"` (Android requires
+  // dropping fontWeight to avoid the missing-weight-variant fallback).
+  useFonts({
+    KCCDodamdodam: require("../assets/fonts/KCCDodamdodam.ttf"),
+  });
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>

@@ -350,7 +350,7 @@ export default function EditLogScreen() {
         bottomPadding={120}
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-2xl font-black text-gray-900">로그 수정</Text>
+          <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900">로그 수정</Text>
           <Pressable
             onPress={() => router.back()}
             className="p-2 bg-gray-100 rounded-full"

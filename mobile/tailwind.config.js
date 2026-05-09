@@ -13,6 +13,9 @@ module.exports = {
       colors: {
         brand: tokens.brand,
       },
+      fontFamily: {
+        title: "KCCDodamdodam",
+      },
     },
   },
   plugins: [],

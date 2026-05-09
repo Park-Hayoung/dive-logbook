@@ -256,7 +256,7 @@ export default function TeamDetailScreen() {
               </View>
             ) : null}
           </Pressable>
-          <Text className="text-2xl font-black text-gray-900 mb-1">
+          <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900 mb-1">
             {team.name}
           </Text>
           <Text className="text-[10px] text-gray-400 font-bold mb-3">

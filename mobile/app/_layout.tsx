@@ -102,6 +102,9 @@ function RootGuard() {
       <Stack.Screen name="schedule/new" options={{ presentation: "modal" }} />
       <Stack.Screen name="profile/[id]" />
       <Stack.Screen name="profile/edit" options={{ presentation: "modal" }} />
+      <Stack.Screen name="profile/cards/index" />
+      <Stack.Screen name="profile/cards/capture" />
+      <Stack.Screen name="profile/cards/add" options={{ presentation: "modal" }} />
       <Stack.Screen name="team/index" />
       <Stack.Screen name="team/[id]" />
       <Stack.Screen name="team/new" options={{ presentation: "modal" }} />

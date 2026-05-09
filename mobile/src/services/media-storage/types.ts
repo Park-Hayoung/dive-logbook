@@ -12,7 +12,8 @@ export type UploadScope =
   | { type: "dive"; diveId: string }
   | { type: "avatar" } // user-scoped automatically
   | { type: "feed" } // user-scoped automatically
-  | { type: "team"; teamId: string };
+  | { type: "team"; teamId: string }
+  | { type: "certification" }; // user-scoped automatically (C-card photos)
 
 export type UploadResult = {
   url: string;

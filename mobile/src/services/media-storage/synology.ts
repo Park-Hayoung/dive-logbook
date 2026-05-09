@@ -33,6 +33,8 @@ function scopeToTokenBody(scope: UploadScope): Record<string, unknown> {
       return { kind: "feeds" };
     case "team":
       return { kind: "teams", teamId: scope.teamId };
+    case "certification":
+      return { kind: "certifications" };
   }
 }
 
@@ -50,6 +52,8 @@ function scopeToPathSegments(
       return { kind: "feeds", scopeId: selfUserId };
     case "team":
       return { kind: "teams", scopeId: scope.teamId };
+    case "certification":
+      return { kind: "certifications", scopeId: selfUserId };
   }
 }
 

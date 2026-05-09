@@ -8,8 +8,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Shuffle } from "lucide-react-native";
+import { Shuffle, Award } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/services/supabase";
 import { KeyboardSafeScroll } from "@/src/components";
@@ -47,6 +48,7 @@ type Org = (typeof ORGS)[number];
 export default function OnboardingScreen() {
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [nickname, setNickname] = useState("");
   const [certification, setCertification] = useState<Cert>("Open Water");
@@ -89,6 +91,12 @@ export default function OnboardingScreen() {
       });
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      // Take the user straight to the C-card flow with skip available.
+      // Once they're done (or skip), they land on (tabs).
+      router.replace({
+        pathname: "/profile/cards" as never,
+        params: { from: "onboarding" },
+      } as never);
     } catch (err: unknown) {
       showAlert("프로필 생성 실패", friendlyError(err));
     } finally {
@@ -201,15 +209,23 @@ export default function OnboardingScreen() {
           />
         </View>
 
+        <View className="flex-row items-start gap-2 bg-brand-50 rounded-2xl p-3 mt-2">
+          <Award size={14} color={colors.brand[700]} />
+          <Text className="text-[10px] text-brand-700 leading-4 flex-1">
+            다음 단계에서 자격증 카드(C-card)를 촬영해 등록할 수 있어요. 건너뛰고
+            나중에 프로필에서 등록해도 돼요.
+          </Text>
+        </View>
+
         <Pressable
           onPress={onSubmit}
           disabled={submitting}
-          className="bg-brand-600 p-4 rounded-2xl items-center mt-4"
+          className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
         >
           {submitting ? (
             <ActivityIndicator color={colors.brand.fg} />
           ) : (
-            <Text className="text-brand-fg font-black">시작하기</Text>
+            <Text className="text-brand-fg font-black">다음</Text>
           )}
         </Pressable>
       </KeyboardSafeScroll>

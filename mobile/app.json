@@ -18,6 +18,7 @@
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "다이브 컴퓨터(Shearwater)와 연결하여 다이브 로그를 가져옵니다.",
         "NSPhotoLibraryUsageDescription": "다이브 로그에 사진을 첨부하기 위해 갤러리 접근이 필요합니다.",
+        "NSCameraUsageDescription": "자격증 카드(C-card) 촬영을 위해 카메라가 필요합니다.",
         "NSLocationWhenInUseUsageDescription": "다이브 위치를 자동으로 채우기 위해 현재 위치가 필요합니다."
       }
     },
@@ -43,7 +44,8 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN"
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.CAMERA"
       ]
     },
     "plugins": [
@@ -79,6 +81,12 @@
         }
       ],
       "react-native-compressor",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "자격증 카드 촬영을 위해 카메라가 필요합니다."
+        }
+      ],
       "expo-secure-store",
       "expo-web-browser",
       "@react-native-community/datetimepicker",

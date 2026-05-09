@@ -10,7 +10,14 @@ import { config } from "./config.js";
 //  - avatars: user profile pictures (one folder per user)
 //  - feeds: feed post images (one folder per user)
 //  - teams: team profile pictures (one folder per team)
-export const ALLOWED_KINDS = ["dives", "avatars", "feeds", "teams"] as const;
+//  - certifications: C-card photos (one folder per user; multiple cards)
+export const ALLOWED_KINDS = [
+  "dives",
+  "avatars",
+  "feeds",
+  "teams",
+  "certifications",
+] as const;
 export type MediaKind = (typeof ALLOWED_KINDS)[number];
 
 export function isMediaKind(s: string): s is MediaKind {

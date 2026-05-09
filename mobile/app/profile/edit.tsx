@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { X, Camera } from "lucide-react-native";
+import { X, Camera, Award, ChevronRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -18,6 +18,7 @@ import {
   useUpdateProfile,
   useUploadAvatar,
 } from "@/src/hooks/use-update-profile";
+import { useCertifications } from "@/src/hooks/use-certifications";
 import { Avatar, KeyboardSafeScroll } from "@/src/components";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
@@ -34,6 +35,7 @@ export default function ProfileEditScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
   const { data: profile } = useProfile(userId);
+  const { data: certs } = useCertifications(userId);
   const update = useUpdateProfile(userId);
   const uploadAvatar = useUploadAvatar(userId);
 
@@ -204,6 +206,33 @@ export default function ProfileEditScreen() {
         </View>
 
         <Pressable
+          onPress={() => router.push("/profile/cards" as never)}
+          disabled={submitting}
+          className="flex-row items-center justify-between bg-gray-50 rounded-2xl p-4"
+        >
+          <View className="flex-row items-center gap-3 flex-1">
+            <View className="w-9 h-9 rounded-full bg-brand-50 items-center justify-center">
+              <Award size={16} color={colors.brand[700]} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-black text-gray-900">
+                자격증 카드
+              </Text>
+              <Text className="text-[10px] text-gray-500 mt-0.5">
+                {certs && certs.length > 0
+                  ? `${certs.length}개 등록됨${
+                      certs.find((c) => c.is_primary)
+                        ? ` · 대표: ${certs.find((c) => c.is_primary)!.organization} ${certs.find((c) => c.is_primary)!.level}`
+                        : ""
+                    }`
+                  : "촬영해서 등록하기"}
+              </Text>
+            </View>
+          </View>
+          <ChevronRight size={16} color="#9CA3AF" />
+        </Pressable>
+
+        <Pressable
           onPress={onSave}
           disabled={submitting}
           className="bg-brand-600 p-4 rounded-2xl items-center mt-2"
@@ -214,10 +243,6 @@ export default function ProfileEditScreen() {
             <Text className="text-brand-fg font-black">저장</Text>
           )}
         </Pressable>
-
-        <Text className="text-[10px] text-gray-400 text-center mt-2">
-          자격등급 · 단체 변경은 추후 추가
-        </Text>
       </KeyboardSafeScroll>
     </SafeAreaView>
   );

@@ -17,7 +17,7 @@ export default function LogbookScreen() {
     <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50">
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View className="flex-row justify-between items-center mb-6">
-          <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900">내 로그북</Text>
+          <Text className="text-2xl font-bold text-gray-900">내 로그북</Text>
           <Pressable
             onPress={() => router.push("/log/import")}
             accessibilityLabel="다이브 컴퓨터에서 가져오기"

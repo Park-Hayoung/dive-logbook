@@ -11,11 +11,13 @@ import {
   Dimensions,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { ImagePlus, X } from "lucide-react-native";
+import { ImagePlus, X, Trash2 } from "lucide-react-native";
 
 import {
   useDiveMedia,
   useUploadDiveMedia,
+  useDeleteDiveMedia,
+  countFeedsLinkedToDive,
 } from "@/src/hooks/use-dive-media";
 import type { DiveMedia } from "@/src/types/dive";
 import { friendlyError } from "@/src/lib/error-messages";
@@ -60,8 +62,41 @@ async function tryCompressVideo(
 export function DiveMediaGallery({ diveId }: Props) {
   const { data: media = [], isLoading } = useDiveMedia(diveId);
   const upload = useUploadDiveMedia(diveId);
+  const del = useDeleteDiveMedia(diveId);
   const [busy, setBusy] = useState(false);
   const [viewer, setViewer] = useState<DiveMedia | null>(null);
+
+  const onDelete = async (m: DiveMedia) => {
+    const isLast = media.length === 1;
+    let cascadeFeedCount = 0;
+    if (isLast) {
+      try {
+        cascadeFeedCount = await countFeedsLinkedToDive(diveId);
+      } catch (err) {
+        console.warn("count linked feeds failed", err);
+      }
+    }
+    const message = isLast && cascadeFeedCount > 0
+      ? `마지막 사진/영상이에요.\n이 다이브가 공유된 피드 ${cascadeFeedCount}개도 함께 삭제됩니다.`
+      : "이 사진/영상을 삭제할까요?";
+    showAlert("삭제 확인", message, [
+      { text: "취소", style: "cancel" },
+      {
+        text: "삭제",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await del.mutateAsync({
+              mediaId: m.id,
+              alsoDeleteLinkedFeeds: isLast && cascadeFeedCount > 0,
+            });
+          } catch (err) {
+            showAlert("삭제 실패", friendlyError(err));
+          }
+        },
+      },
+    ]);
+  };
 
   const onPickAndUpload = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -149,26 +184,45 @@ export function DiveMediaGallery({ diveId }: Props) {
           contentContainerStyle={{ gap: 8 }}
         >
           {media.map((m) => (
-            <Pressable
-              key={m.id}
-              onPress={() => setViewer(m)}
-              className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-200 active:opacity-70"
-            >
-              {m.kind === "video" ? (
-                <VideoThumb
-                  videoUrl={m.storageUrl}
-                  thumbnailUrl={m.thumbnailUrl}
-                  style={{ width: "100%", height: "100%" }}
-                  playIconSize={14}
-                />
-              ) : (
-                <Image
-                  source={{ uri: m.storageUrl }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              )}
-            </Pressable>
+            <View key={m.id} className="relative">
+              <Pressable
+                onPress={() => setViewer(m)}
+                className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-200 active:opacity-70"
+              >
+                {m.kind === "video" ? (
+                  <VideoThumb
+                    videoUrl={m.storageUrl}
+                    thumbnailUrl={m.thumbnailUrl}
+                    style={{ width: "100%", height: "100%" }}
+                    playIconSize={14}
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: m.storageUrl }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => onDelete(m)}
+                disabled={del.isPending}
+                hitSlop={6}
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(0,0,0,0.6)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Trash2 size={12} color="#fff" />
+              </Pressable>
+            </View>
           ))}
         </ScrollView>
       )}

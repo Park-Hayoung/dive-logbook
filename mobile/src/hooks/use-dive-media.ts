@@ -82,6 +82,46 @@ async function uploadThumbnail(
   }
 }
 
+export function useDeleteDiveMedia(diveId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      mediaId: string;
+      /** When true, also deletes feed posts that link to this dive (for last-media cascade). */
+      alsoDeleteLinkedFeeds?: boolean;
+    }) => {
+      if (input.alsoDeleteLinkedFeeds && diveId) {
+        const { error: feedErr } = await supabase
+          .from("feeds")
+          .delete()
+          .eq("linked_dive_id", diveId);
+        if (feedErr) throw feedErr;
+      }
+      const { error } = await supabase
+        .from("dive_media")
+        .delete()
+        .eq("id", input.mediaId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dive-media", diveId] });
+      qc.invalidateQueries({ queryKey: ["feeds"] });
+      qc.invalidateQueries({ queryKey: ["user-feeds-with-images"] });
+      qc.invalidateQueries({ queryKey: ["user-feed-count"] });
+    },
+  });
+}
+
+/** Count feeds that link to this dive (for cascade-delete prompts). */
+export async function countFeedsLinkedToDive(diveId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("feeds")
+    .select("id", { count: "exact", head: true })
+    .eq("linked_dive_id", diveId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export function useUploadDiveMedia(diveId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({

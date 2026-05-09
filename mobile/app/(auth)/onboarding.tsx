@@ -99,7 +99,7 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-white">
       <KeyboardSafeScroll contentContainerStyle={{ padding: 24, gap: 16 }}>
-        <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title mb-2">프로필 설정</Text>
+        <Text className="text-2xl font-bold mb-2">프로필 설정</Text>
         <Text className="text-sm text-gray-500 mb-4">
           로그북 시작을 위한 기본 정보예요.
         </Text>

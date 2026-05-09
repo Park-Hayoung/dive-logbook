@@ -124,7 +124,7 @@ export default function ProfileEditScreen() {
         bottomPadding={120}
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900">프로필 편집</Text>
+          <Text className="text-2xl font-bold text-gray-900">프로필 편집</Text>
           <Pressable
             onPress={() => router.back()}
             disabled={submitting}

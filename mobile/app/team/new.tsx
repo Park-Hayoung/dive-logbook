@@ -101,7 +101,7 @@ export default function NewTeamScreen() {
         bottomPadding={120}
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900">팀 만들기</Text>
+          <Text className="text-2xl font-bold text-gray-900">팀 만들기</Text>
           <Pressable
             onPress={() => router.back()}
             className="p-2 bg-gray-100 rounded-full"

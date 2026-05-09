@@ -26,8 +26,9 @@ export default function RootLayout() {
   // if the font asset fails to load on dev builds.
   // Plugin (app.json: expo-font) embeds the font natively at build time.
   // useFonts here is a runtime fallback (e.g., after fast-refresh).
-  // Title text uses inline `fontFamily: "KCCDodamdodam"` (Android requires
-  // dropping fontWeight to avoid the missing-weight-variant fallback).
+  // Used via inline `fontFamily: "KCCDodamdodam"` on the home tagline.
+  // Note: combining this fontFamily with fontWeight (e.g. font-black) on
+  // Android falls back to system font — keep weight unset on those Texts.
   useFonts({
     KCCDodamdodam: require("../assets/fonts/KCCDodamdodam.ttf"),
   });

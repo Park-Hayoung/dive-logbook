@@ -9,6 +9,7 @@ import { Heart, MessageCircle, MapPin } from "lucide-react-native";
 
 import type { FeedItem } from "@/src/hooks/use-feeds";
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
+import { useFeedMedia } from "@/src/hooks/use-feed-media";
 import {
   FeedMediaCarousel,
   type FeedMediaItem,
@@ -50,6 +51,10 @@ export function FeedCard({
   const { data: diveMedia = [] } = useDiveMedia(
     feed.linkedDiveId ?? undefined,
   );
+  // Only fetch feed_media for non-log-share feeds (log shares use dive_media).
+  const { data: feedMedia = [] } = useFeedMedia(
+    feed.linkedDiveId ? undefined : feed.id,
+  );
 
   const items: FeedMediaItem[] =
     feed.linkedDiveId && diveMedia.length > 0
@@ -59,16 +64,23 @@ export function FeedCard({
           kind: m.kind,
           thumbnailUrl: m.thumbnailUrl,
         }))
-      : feed.imageUrl
-        ? [
-            {
-              id: "feed-image",
-              url: feed.imageUrl,
-              kind: "image",
-              thumbnailUrl: null,
-            },
-          ]
-        : [];
+      : feedMedia.length > 0
+        ? feedMedia.map((m) => ({
+            id: m.id,
+            url: m.storageUrl,
+            kind: m.kind,
+            thumbnailUrl: m.thumbnailUrl,
+          }))
+        : feed.imageUrl
+          ? [
+              {
+                id: "feed-image",
+                url: feed.imageUrl,
+                kind: "image",
+                thumbnailUrl: null,
+              },
+            ]
+          : [];
 
   return (
     <Pressable

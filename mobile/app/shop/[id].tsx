@@ -76,7 +76,7 @@ export default function ShopDetailScreen() {
                 </Text>
               </View>
             ) : null}
-            <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900">
+            <Text className="text-2xl font-bold text-gray-900">
               {shop.name}
             </Text>
             <View className="flex-row items-center gap-1.5 mt-2">

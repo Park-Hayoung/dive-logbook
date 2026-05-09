@@ -15,6 +15,7 @@ import {
   Award,
   UserPlus,
   UserMinus,
+  Users,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
@@ -28,6 +29,7 @@ import {
   useInfiniteUserFeedsWithImages,
   useUserFeedCount,
 } from "@/src/hooks/use-feeds";
+import { useMyTeam } from "@/src/hooks/use-teams";
 import { Avatar, FeedGrid } from "@/src/components";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
@@ -41,6 +43,7 @@ export default function PublicProfileScreen() {
   const { data: profile, isLoading } = useProfile(id);
   const { data: counts } = useFollowCounts(id);
   const { data: feedCount } = useUserFeedCount(id);
+  const { data: theirTeam } = useMyTeam(id);
   const { data: isFollowing = false } = useIsFollowing(myUserId, id);
   const toggleFollow = useToggleFollow(myUserId);
 
@@ -172,13 +175,30 @@ export default function PublicProfileScreen() {
           </View>
 
           <View className="mt-4">
-            <View className="flex-row">
+            <View className="flex-row flex-wrap gap-1.5">
               <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full">
                 <Award size={12} color={colors.brand[700]} />
                 <Text className="text-[10px] font-black text-brand-700">
                   {profile.diving_org ?? "—"} · {profile.certification ?? "—"}
                 </Text>
               </View>
+              {theirTeam?.team ? (
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/team/[id]",
+                      params: { id: theirTeam.team!.id },
+                    })
+                  }
+                  className="flex-row items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full"
+                >
+                  <Users size={12} color="#374151" />
+                  <Text className="text-[10px] font-black text-gray-700">
+                    {theirTeam.team.name}
+                    {theirTeam.role === "leader" ? " · 리더" : ""}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
 
             {profile.bio ? (

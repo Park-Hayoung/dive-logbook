@@ -218,7 +218,16 @@ export default function LogDetailScreen() {
                 </>
               ) : null}
               <Pressable
-                onPress={() => setShareOpen(true)}
+                onPress={() => {
+                  if (media.length === 0) {
+                    showAlert(
+                      "공유 불가",
+                      "피드에 공유하려면 로그에 사진이나 영상이 한 개 이상 등록되어 있어야 해요.",
+                    );
+                    return;
+                  }
+                  setShareOpen(true);
+                }}
                 className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full"
               >
                 <Share2 size={12} color={colors.brand[700]} />

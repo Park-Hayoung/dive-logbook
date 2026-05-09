@@ -215,7 +215,7 @@ export default function HomeScreen() {
       >
         <View className="flex-row justify-between items-start mb-6">
           <View className="flex-1">
-            <Text style={{ fontFamily: "KCCDodamdodam" }} className="text-2xl font-title text-gray-900 mb-1">
+            <Text className="text-2xl font-bold text-gray-900 mb-1">
               안녕하세요, {profile?.nickname ?? "다이버"}님 🌊
             </Text>
             <Text className="text-sm text-gray-500">

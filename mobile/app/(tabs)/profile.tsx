@@ -3,11 +3,12 @@ import { View, Text, ScrollView, Pressable } from "react-native";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Award, Camera, Settings } from "lucide-react-native";
+import { Award, Camera, Settings, Users } from "lucide-react-native";
 
 import { useAuthStore } from "@/src/store/auth-store";
 import { useProfile } from "@/src/hooks/use-profile";
 import { useFollowCounts } from "@/src/hooks/use-follows";
+import { useMyTeam } from "@/src/hooks/use-teams";
 import { colors } from "@/src/lib/colors";
 import {
   useInfiniteUserFeedsWithImages,
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
   const { data: profile } = useProfile(userId);
   const { data: followCounts } = useFollowCounts(userId);
   const { data: feedCount } = useUserFeedCount(userId);
+  const { data: myTeam } = useMyTeam(userId);
 
   const {
     data: feedPages,
@@ -134,13 +136,30 @@ export default function ProfileScreen() {
           </View>
 
           <View className="mt-4">
-            <View className="flex-row">
+            <View className="flex-row flex-wrap gap-1.5">
               <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full">
                 <Award size={12} color={colors.brand[700]} />
                 <Text className="text-[10px] font-black text-brand-700">
                   {profile?.diving_org ?? "—"} · {profile?.certification ?? "—"}
                 </Text>
               </View>
+              {myTeam?.team ? (
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/team/[id]",
+                      params: { id: myTeam.team!.id },
+                    })
+                  }
+                  className="flex-row items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full"
+                >
+                  <Users size={12} color="#374151" />
+                  <Text className="text-[10px] font-black text-gray-700">
+                    {myTeam.team.name}
+                    {myTeam.role === "leader" ? " · 리더" : ""}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
 
             {profile?.bio ? (

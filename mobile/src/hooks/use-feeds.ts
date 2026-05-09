@@ -304,6 +304,18 @@ export function useToggleFeedLike(currentUserId: string | undefined) {
   });
 }
 
+export type FeedMediaInsert = {
+  storageUrl: string;
+  kind: "image" | "video";
+  provider?: string;
+  thumbnailUrl?: string | null;
+  durationSeconds?: number | null;
+  width?: number | null;
+  height?: number | null;
+  fileSizeBytes?: number | null;
+  originalFilename?: string | null;
+};
+
 export function useCreateFeed(currentUserId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
@@ -313,22 +325,56 @@ export function useCreateFeed(currentUserId: string | undefined) {
       location?: string | null;
       linkedDiveId?: string | null;
       imageUrl?: string | null;
+      /** Optional multi-media list (non-log feeds). First item's URL becomes the cover. */
+      media?: FeedMediaInsert[];
     }) => {
       if (!currentUserId) throw new Error("로그인이 필요해요.");
-      const { error } = await supabase.from("feeds").insert({
-        author_id: currentUserId,
-        type: input.type ?? "normal",
-        content: input.content,
-        location: input.location ?? null,
-        linked_dive_id: input.linkedDiveId ?? null,
-        image_url: input.imageUrl ?? null,
-      });
+      const cover =
+        input.imageUrl ?? input.media?.[0]?.storageUrl ?? null;
+      const { data: feedRow, error } = await supabase
+        .from("feeds")
+        .insert({
+          author_id: currentUserId,
+          type: input.type ?? "normal",
+          content: input.content,
+          location: input.location ?? null,
+          linked_dive_id: input.linkedDiveId ?? null,
+          image_url: cover,
+        })
+        .select("id")
+        .single();
       if (error) throw new Error(error.message || JSON.stringify(error));
+
+      if (input.media && input.media.length > 0) {
+        const feedId = (feedRow as unknown as { id: string }).id;
+        const rows = input.media.map((m) => ({
+          feed_id: feedId,
+          storage_url: m.storageUrl,
+          kind: m.kind,
+          provider: m.provider ?? "synology",
+          thumbnail_url: m.thumbnailUrl ?? null,
+          duration_seconds: m.durationSeconds ?? null,
+          width: m.width ?? null,
+          height: m.height ?? null,
+          file_size_bytes: m.fileSizeBytes ?? null,
+          original_filename: m.originalFilename ?? null,
+        }));
+        // feed_media 타입은 supabase gen types 재실행 후 인식됨. 우회.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: mediaErr } = await (supabase as any)
+          .from("feed_media")
+          .insert(rows);
+        if (mediaErr)
+          throw new Error(mediaErr.message || JSON.stringify(mediaErr));
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
       qc.invalidateQueries({
         queryKey: ["user-feeds-with-images", currentUserId],
+      });
+      qc.invalidateQueries({
+        queryKey: ["user-feed-count", currentUserId],
       });
     },
   });

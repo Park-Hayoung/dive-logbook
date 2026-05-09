@@ -39,12 +39,18 @@ export default function ProfileEditScreen() {
 
   const [nickname, setNickname] = useState("");
   const [bio, setBio] = useState("");
+  const [priorDives, setPriorDives] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (profile) {
       setNickname(profile.nickname ?? "");
       setBio(profile.bio ?? "");
+      setPriorDives(
+        profile.total_dives_at_signup != null
+          ? String(profile.total_dives_at_signup)
+          : "",
+      );
     }
   }, [profile]);
 
@@ -83,11 +89,22 @@ export default function ProfileEditScreen() {
       showAlert("닉네임", "최소 2자 이상이어야 해요.");
       return;
     }
+    let priorDivesValue: number | null = null;
+    const priorDivesTrimmed = priorDives.trim();
+    if (priorDivesTrimmed) {
+      const n = Number(priorDivesTrimmed);
+      if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+        showAlert("이전 다이브 수", "0 이상의 정수를 입력해주세요.");
+        return;
+      }
+      priorDivesValue = n;
+    }
     setSubmitting(true);
     try {
       await update.mutateAsync({
         nickname: trimmed,
         bio: bio.trim() || null,
+        totalDivesAtSignup: priorDivesValue,
       });
       router.back();
     } catch (err: unknown) {
@@ -165,6 +182,25 @@ export default function ProfileEditScreen() {
             editable={!submitting}
             className="border border-gray-200 rounded-2xl p-4 text-base text-gray-900 min-h-24"
           />
+        </View>
+
+        <View className="gap-1">
+          <Text className="text-xs font-bold text-gray-700">
+            이전 다이브 수
+          </Text>
+          <TextInput
+            value={priorDives}
+            onChangeText={setPriorDives}
+            placeholder="가입 전까지의 누적 다이브 수"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="number-pad"
+            editable={!submitting}
+            className="border border-gray-200 rounded-2xl p-4 text-base text-gray-900"
+          />
+          <Text className="text-[10px] text-gray-400 mt-1 leading-4">
+            앱 가입 전 기록된 누적 횟수예요. 다이브 컴퓨터로 인증/가져오기를
+            진행하면서 중복이 생기지 않도록 직접 조정할 수 있어요.
+          </Text>
         </View>
 
         <Pressable

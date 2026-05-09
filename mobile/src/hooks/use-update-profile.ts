@@ -7,6 +7,7 @@ export type ProfileUpdate = {
   nickname?: string;
   bio?: string | null;
   profileImageUrl?: string | null;
+  totalDivesAtSignup?: number | null;
 };
 
 export function useUpdateProfile(userId: string | undefined) {
@@ -19,6 +20,8 @@ export function useUpdateProfile(userId: string | undefined) {
       if (input.bio !== undefined) update.bio = input.bio;
       if (input.profileImageUrl !== undefined)
         update.profile_image_url = input.profileImageUrl;
+      if (input.totalDivesAtSignup !== undefined)
+        update.total_dives_at_signup = input.totalDivesAtSignup;
       const { error } = await supabase
         .from("profiles")
         .update(update)

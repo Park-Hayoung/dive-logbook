@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { colors } from "@/src/lib/colors";
 import {
   View,
@@ -19,9 +19,6 @@ import {
   ImagePlus,
   Video as VideoIcon,
   Play,
-  Ship,
-  Waves,
-  Anchor,
   Wind,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -34,6 +31,10 @@ import {
   EquipmentPickerField,
   EquipmentPickerModal,
 } from "@/src/components/EquipmentPicker";
+import {
+  BuddyPickerField,
+  BuddyPickerModal,
+} from "@/src/components/BuddyPicker";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 import {
@@ -41,6 +42,11 @@ import {
   useRegisterEquipment,
   type EquipmentCategory,
 } from "@/src/hooks/use-equipment";
+import {
+  useUserBuddies,
+  useAddBuddy,
+  type BuddyProfile,
+} from "@/src/hooks/use-buddies";
 import { mediaStorage } from "@/src/services/media-storage";
 import {
   LocationField,
@@ -53,7 +59,6 @@ type FieldKey =
   | "avgDepth"
   | "waterTemp"
   | "visibility"
-  | "durationMinutes"
   | "memo"
   | "tankVolumeL"
   | "tankStartBar"
@@ -62,30 +67,32 @@ type FieldKey =
 
 type FormState = Record<FieldKey, string>;
 
+// 날짜(YYYY-MM-DD) + 시각(HH:MM)을 합쳐서 하나의 Date 로. 연/월/일은 첫 인자에서,
+// 시/분은 두 번째 인자에서 가져온다.
+const combineDateAndTime = (date: Date, time: Date): Date => {
+  const out = new Date(date);
+  out.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  return out;
+};
+
+// 입수~출수 분 단위 다이브 시간. 출수가 입수보다 빠르면 자정을 넘긴 것으로 보고 24h 보정.
+const computeDurationMinutes = (
+  date: Date | null,
+  entry: Date | null,
+  exit: Date | null,
+): number | null => {
+  if (!date || !entry || !exit) return null;
+  const start = combineDateAndTime(date, entry);
+  let end = combineDateAndTime(date, exit);
+  if (end.getTime() <= start.getTime()) {
+    end = new Date(end.getTime() + 24 * 60 * 60_000);
+  }
+  return Math.round((end.getTime() - start.getTime()) / 60_000);
+};
+
 type WeatherCode = "sunny" | "cloudy" | "rainy" | "night";
 
-type EntryType = "boat" | "shore" | "liveaboard";
 type CurrentStrength = "none" | "mild" | "moderate" | "strong";
-
-const ENTRY_TYPE_OPTIONS: ReadonlyArray<{
-  code: EntryType;
-  label: string;
-  Icon: typeof Sun;
-}> = [
-  { code: "boat", label: "보트", Icon: Ship },
-  { code: "shore", label: "비치", Icon: Waves },
-  { code: "liveaboard", label: "리브어보드", Icon: Anchor },
-];
-
-const STYLE_OPTIONS: ReadonlyArray<{ code: string; label: string }> = [
-  { code: "drift", label: "드리프트" },
-  { code: "wreck", label: "랙" },
-  { code: "night", label: "야간" },
-  { code: "deep", label: "딥" },
-  { code: "wall", label: "월" },
-  { code: "cave", label: "케이브" },
-  { code: "training", label: "교육" },
-];
 
 const CURRENT_OPTIONS: ReadonlyArray<{ code: CurrentStrength; label: string }> = [
   { code: "none", label: "없음" },
@@ -110,7 +117,6 @@ const INITIAL: FormState = {
   avgDepth: "",
   waterTemp: "",
   visibility: "",
-  durationMinutes: "",
   memo: "",
   tankVolumeL: "",
   tankStartBar: "",
@@ -173,27 +179,53 @@ export default function NewLogScreen() {
 
   const [form, setForm] = useState<FormState>(INITIAL);
   const [location, setLocation] = useState<LocationFieldValue>(emptyLocation);
-  const [diveStart, setDiveStart] = useState<Date | null>(null);
+  const [diveDate, setDiveDate] = useState<Date | null>(null);
+  const [entryTime, setEntryTime] = useState<Date | null>(null);
+  const [exitTime, setExitTime] = useState<Date | null>(null);
+
+  // 입수/출수 시간이 모두 채워졌을 때만 자동 계산. 그 전에는 안내 텍스트가 보임.
+  const durationMinutes = useMemo(
+    () => computeDurationMinutes(diveDate, entryTime, exitTime),
+    [diveDate, entryTime, exitTime],
+  );
   const [weather, setWeather] = useState<WeatherCode>("sunny");
-  const [entryType, setEntryType] = useState<EntryType | null>(null);
-  const [diveStyle, setDiveStyle] = useState<Set<string>>(new Set());
   const [currentStrength, setCurrentStrength] =
     useState<CurrentStrength | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const toggleStyle = (code: string) =>
-    setDiveStyle((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
 
   // ──── 장비 선택 ────
   const { data: userEquipment } = useUserEquipment(userId);
   const registerEquipment = useRegisterEquipment(userId);
   const [selectedEqIds, setSelectedEqIds] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // ──── 버디 선택 ────
+  const { data: userBuddies } = useUserBuddies(userId);
+  const addBuddy = useAddBuddy(userId);
+  const [selectedBuddyIds, setSelectedBuddyIds] = useState<Set<string>>(
+    new Set(),
+  );
+  // 검색에서 새로 고른, 아직 user_buddies 에 없는 프로필. 저장 시점에 등록됨.
+  const [pendingNewBuddies, setPendingNewBuddies] = useState<
+    Map<string, BuddyProfile>
+  >(new Map());
+  const [buddyPickerOpen, setBuddyPickerOpen] = useState(false);
+
+  const toggleBuddy = (id: string) => {
+    setSelectedBuddyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    // 선택 해제 시 pending 에서도 제거 — 저장 시점에 의도치 않은 INSERT 방지.
+    setPendingNewBuddies((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
   // ──── 사진/영상 펜딩 큐 ────
   // 다이브 row 가 아직 없으니 업로드는 보류 — INSERT 성공 후 일괄 업로드.
@@ -280,9 +312,13 @@ export default function NewLogScreen() {
       showAlert("최대 수심", "0보다 큰 숫자를 입력해주세요.");
       return;
     }
-    const duration = parseNumber(form.durationMinutes);
+    if (!diveDate || !entryTime || !exitTime) {
+      showAlert("다이브 시간", "날짜, 입수 시간, 출수 시간을 모두 선택해주세요.");
+      return;
+    }
+    const duration = durationMinutes;
     if (duration === null || duration <= 0) {
-      showAlert("다이브 시간", "분 단위 숫자를 입력해주세요.");
+      showAlert("다이브 시간", "출수 시간이 입수 시간보다 늦어야 해요.");
       return;
     }
 
@@ -295,9 +331,12 @@ export default function NewLogScreen() {
       if (countError) throw countError;
 
       const nextNumber = (count ?? 0) + 1;
-      // If user picked a dive start time, use it; otherwise anchor to "now - duration".
-      const startedAt = diveStart ?? new Date(Date.now() - duration * 60_000);
-      const endedAt = new Date(startedAt.getTime() + duration * 60_000);
+      const startedAt = combineDateAndTime(diveDate, entryTime);
+      let endedAt = combineDateAndTime(diveDate, exitTime);
+      // 출수가 입수보다 이른 시각이면 자정을 넘긴 것 — 다음날로 보정.
+      if (endedAt.getTime() <= startedAt.getTime()) {
+        endedAt = new Date(endedAt.getTime() + 24 * 60 * 60_000);
+      }
 
       const tankStart = parseNumber(form.tankStartBar);
       const tankEnd = parseNumber(form.tankEndBar);
@@ -326,8 +365,6 @@ export default function NewLogScreen() {
           weather,
           memo: form.memo.trim() || null,
           is_verified: false,
-          entry_type: entryType,
-          dive_style: diveStyle.size > 0 ? [...diveStyle] : null,
           current_strength: currentStrength,
           surface_interval_min: parseNumber(form.surfaceIntervalMin),
           tank_volume_l: parseNumber(form.tankVolumeL),
@@ -355,6 +392,35 @@ export default function NewLogScreen() {
         if (linkError) {
           console.error("dive_user_equipment insert failed", linkError);
           equipmentLinkError = linkError.message ?? "장비 연결에 실패했어요.";
+        }
+      }
+
+      // 선택된 버디 → 이번 다이브에 연결. 실패해도 다이브 저장 자체는 유지.
+      let buddyLinkError: string | null = null;
+      if (selectedBuddyIds.size > 0) {
+        const links = [...selectedBuddyIds].map((bId) => ({
+          dive_id: diveId,
+          user_id: bId,
+        }));
+        const { error: linkError } = await supabase
+          .from("dive_buddies")
+          .insert(links);
+        if (linkError) {
+          console.error("dive_buddies insert failed", linkError);
+          buddyLinkError = linkError.message ?? "버디 연결에 실패했어요.";
+        }
+      }
+
+      // 검색에서 새로 추가한 사람 → 내 버디 리스트(user_buddies)에도 등록.
+      // 다이브 저장과 별개로 실패해도 다이브 자체는 유지.
+      const pendingToRegister = [...pendingNewBuddies.keys()].filter((id) =>
+        selectedBuddyIds.has(id),
+      );
+      for (const buddyId of pendingToRegister) {
+        try {
+          await addBuddy.mutateAsync(buddyId);
+        } catch (e) {
+          console.warn("user_buddies insert failed for", buddyId, e);
         }
       }
 
@@ -429,6 +495,9 @@ export default function NewLogScreen() {
       if (equipmentLinkError) {
         warnings.push(`장비 연결 실패: ${equipmentLinkError}`);
       }
+      if (buddyLinkError) {
+        warnings.push(`버디 연결 실패: ${buddyLinkError}`);
+      }
       if (uploadFailures > 0) {
         warnings.push(
           `${uploadFailures}개 미디어 업로드 실패 (로그 상세에서 다시 시도 가능)`,
@@ -462,10 +531,6 @@ export default function NewLogScreen() {
           </Pressable>
         </View>
 
-        <Text className="text-[10px] text-gray-400">
-          BLE 통합 전 임시 수동 입력 폼 · is_verified=false
-        </Text>
-
         <LocationField
           value={location}
           onChange={setLocation}
@@ -473,14 +538,37 @@ export default function NewLogScreen() {
         />
 
         <DateField
-          label="다이브 시작 (선택, 없으면 현재 시각 기준)"
-          value={diveStart}
-          onChange={setDiveStart}
-          mode="datetime"
-          placeholder="날짜 + 시각"
+          label="다이브 날짜 *"
+          value={diveDate}
+          onChange={setDiveDate}
+          mode="date"
+          placeholder="YYYY-MM-DD"
           disabled={submitting}
           maximumDate={new Date()}
         />
+
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <DateField
+              label="입수 시간 *"
+              value={entryTime}
+              onChange={setEntryTime}
+              mode="time"
+              placeholder="HH:MM"
+              disabled={submitting}
+            />
+          </View>
+          <View className="flex-1">
+            <DateField
+              label="출수 시간 *"
+              value={exitTime}
+              onChange={setExitTime}
+              mode="time"
+              placeholder="HH:MM"
+              disabled={submitting}
+            />
+          </View>
+        </View>
 
         <View className="flex-row gap-3">
           <View className="flex-1">
@@ -529,12 +617,14 @@ export default function NewLogScreen() {
         </View>
 
         <Field
-          label="다이브 시간 (분) *"
-          value={form.durationMinutes}
-          onChangeText={(v) => update("durationMinutes", v)}
+          label="다이브 시간 (분) (자동 계산)"
+          value={durationMinutes !== null ? String(durationMinutes) : ""}
+          onChangeText={() => {
+            /* 자동 계산되는 값이라 수정 불가 */
+          }}
           keyboardType="number-pad"
-          placeholder="42"
-          editable={!submitting}
+          placeholder="입수/출수 시간을 입력하면 자동 계산돼요"
+          editable={false}
         />
 
         <View className="gap-2">
@@ -570,72 +660,6 @@ export default function NewLogScreen() {
                 editable={!submitting}
               />
             </View>
-          </View>
-        </View>
-
-        <View className="gap-2">
-          <Text className="text-xs font-bold text-gray-700">진입 방식</Text>
-          <View className="flex-row gap-2">
-            {ENTRY_TYPE_OPTIONS.map(({ code, label, Icon }) => {
-              const active = entryType === code;
-              return (
-                <Pressable
-                  key={code}
-                  onPress={() =>
-                    setEntryType((prev) => (prev === code ? null : code))
-                  }
-                  disabled={submitting}
-                  accessibilityLabel={`진입 ${label}`}
-                  className={`flex-1 items-center gap-1 py-3 rounded-2xl border ${
-                    active
-                      ? "bg-brand-600 border-brand-600"
-                      : "bg-white border-gray-200"
-                  }`}
-                >
-                  <Icon
-                    size={18}
-                    color={active ? "#FFFFFF" : "#6B7280"}
-                    strokeWidth={active ? 2.5 : 2}
-                  />
-                  <Text
-                    className={`text-[10px] font-black ${
-                      active ? "text-brand-fg" : "text-gray-700"
-                    }`}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <View className="gap-2">
-          <Text className="text-xs font-bold text-gray-700">스타일</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {STYLE_OPTIONS.map(({ code, label }) => {
-              const active = diveStyle.has(code);
-              return (
-                <Pressable
-                  key={code}
-                  onPress={() => toggleStyle(code)}
-                  disabled={submitting}
-                  className={`px-3 py-2 rounded-full border ${
-                    active
-                      ? "bg-brand-600 border-brand-600"
-                      : "bg-white border-gray-200"
-                  }`}
-                >
-                  <Text
-                    className={`text-[11px] font-black ${
-                      active ? "text-brand-fg" : "text-gray-700"
-                    }`}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
           </View>
         </View>
 
@@ -727,6 +751,15 @@ export default function NewLogScreen() {
           selectedIds={selectedEqIds}
           onToggle={toggleEquipment}
           onOpenPicker={() => setPickerOpen(true)}
+          disabled={submitting}
+        />
+
+        <BuddyPickerField
+          items={userBuddies ?? []}
+          pendingProfiles={Array.from(pendingNewBuddies.values())}
+          selectedIds={selectedBuddyIds}
+          onToggle={toggleBuddy}
+          onOpenPicker={() => setBuddyPickerOpen(true)}
           disabled={submitting}
         />
 
@@ -841,6 +874,36 @@ export default function NewLogScreen() {
         onPick={(id) => setSelectedEqIds((prev) => new Set(prev).add(id))}
         onCreateInline={handleCreateInline}
         creating={registerEquipment.isPending}
+        onPickFromCatalog={async ({ equipmentId, category }) => {
+          // 카탈로그 항목 → 내 장비로 자동 등록 + 이번 다이브 선택에 반영.
+          const created = await registerEquipment.mutateAsync({
+            kind: "catalog",
+            equipmentId,
+            category,
+          });
+          setSelectedEqIds((prev) => new Set(prev).add(created.id));
+        }}
+      />
+
+      <BuddyPickerModal
+        visible={buddyPickerOpen}
+        onClose={() => setBuddyPickerOpen(false)}
+        items={userBuddies ?? []}
+        selectedIds={selectedBuddyIds}
+        onPick={(id) =>
+          setSelectedBuddyIds((prev) => new Set(prev).add(id))
+        }
+        onGoToManage={() => router.push("/buddies" as never)}
+        currentUserId={userId}
+        onPickNew={(profile) => {
+          // 검색에서 새로 고른 경우: 선택만 누적. user_buddies INSERT 는 로그 저장 시점에 일괄.
+          setSelectedBuddyIds((prev) => new Set(prev).add(profile.id));
+          setPendingNewBuddies((prev) => {
+            const next = new Map(prev);
+            next.set(profile.id, profile);
+            return next;
+          });
+        }}
       />
     </SafeAreaView>
   );

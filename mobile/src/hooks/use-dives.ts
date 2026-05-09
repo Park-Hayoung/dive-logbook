@@ -155,13 +155,17 @@ export type UpdateDiveInput = {
   visibility: number | null;
   weather: "sunny" | "cloudy" | "rainy" | "night";
   memo: string | null;
-  entryType: EntryType | null;
-  diveStyle: string[] | null;
+  // entryType / diveStyle 은 UI 에서 제거됐지만 기존 데이터는 보존 — 호출자가 명시적으로
+  // 보낼 때만 덮어쓴다 (undefined 면 컬럼 미터치).
+  entryType?: EntryType | null;
+  diveStyle?: string[] | null;
   currentStrength: CurrentStrength | null;
   surfaceIntervalMin: number | null;
   tankVolumeL: number | null;
   // 사용자 보유 장비 ID 배열 — 전체 교체 (delete + insert).
   userEquipmentIds: string[];
+  // 함께한 버디 user_id 배열 — 전체 교체 (delete + insert).
+  buddyUserIds: string[];
   // BLE-locked fields. Caller omits these when is_verified=true so they can't
   // be tampered with. The server-side trigger (012) is the authoritative gate.
   startedAt?: string;
@@ -190,12 +194,13 @@ export function useUpdateDive(userId: string | undefined) {
         visibility: patch.visibility,
         weather: patch.weather,
         memo: patch.memo,
-        entry_type: patch.entryType,
-        dive_style: patch.diveStyle,
         current_strength: patch.currentStrength,
         surface_interval_min: patch.surfaceIntervalMin,
         tank_volume_l: patch.tankVolumeL,
       };
+      // entryType/diveStyle: undefined 면 미터치 (기존값 보존).
+      if (patch.entryType !== undefined) updateRow.entry_type = patch.entryType;
+      if (patch.diveStyle !== undefined) updateRow.dive_style = patch.diveStyle;
       // Only write BLE-locked columns if caller supplied them (i.e. dive was
       // not BLE-imported). Trigger 012 will reject if the row is verified.
       if (patch.startedAt !== undefined) updateRow.started_at = patch.startedAt;
@@ -232,11 +237,35 @@ export function useUpdateDive(userId: string | undefined) {
           .insert(links);
         if (insErr) throw new Error(insErr.message || JSON.stringify(insErr));
       }
+
+      // 버디 링크 전체 교체. 같은 패턴 (delete + insert).
+      const { error: buddyDelErr } = await supabase
+        .from("dive_buddies")
+        .delete()
+        .eq("dive_id", diveId);
+      if (buddyDelErr)
+        throw new Error(buddyDelErr.message || JSON.stringify(buddyDelErr));
+
+      if (patch.buddyUserIds.length > 0) {
+        const buddyLinks = patch.buddyUserIds.map((uid) => ({
+          dive_id: diveId,
+          user_id: uid,
+        }));
+        const { error: buddyInsErr } = await supabase
+          .from("dive_buddies")
+          .insert(buddyLinks);
+        if (buddyInsErr)
+          throw new Error(buddyInsErr.message || JSON.stringify(buddyInsErr));
+      }
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["dives", userId] });
       qc.invalidateQueries({ queryKey: ["dive", vars.diveId] });
       qc.invalidateQueries({ queryKey: ["dive-user-equipment", vars.diveId] });
+      qc.invalidateQueries({ queryKey: ["dive-buddies", vars.diveId] });
+      qc.invalidateQueries({
+        queryKey: ["dive-buddy-profiles", vars.diveId],
+      });
     },
   });
 }

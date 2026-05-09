@@ -105,7 +105,7 @@ export function LocationField({ value, onChange, disabled }: Props) {
           >
             <Search
               size={12}
-              color={placesApiConfigured ? "#FFF44F" : "#9CA3AF"}
+              color={placesApiConfigured ? colors.brand[700] : "#9CA3AF"}
             />
             <Text
               className={`text-[10px] font-black ${

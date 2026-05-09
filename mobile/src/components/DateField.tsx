@@ -3,9 +3,9 @@ import { View, Text, Pressable, Platform } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { CalendarDays } from "lucide-react-native";
+import { CalendarDays, Clock } from "lucide-react-native";
 
-type Mode = "date" | "datetime";
+type Mode = "date" | "datetime" | "time";
 
 type Props = {
   label: string;
@@ -26,6 +26,9 @@ const formatYmd = (d: Date) =>
 const formatDateTime = (d: Date) =>
   `${formatYmd(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
+const formatTime = (d: Date) =>
+  `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
 export function DateField({
   label,
   value,
@@ -42,6 +45,8 @@ export function DateField({
   const display = value
     ? mode === "datetime"
       ? formatDateTime(value)
+      : mode === "time"
+      ? formatTime(value)
       : formatYmd(value)
     : "";
 
@@ -76,12 +81,16 @@ export function DateField({
       <Pressable
         onPress={() => {
           if (disabled) return;
-          setPickerMode("date");
+          setPickerMode(mode === "time" ? "time" : "date");
           setShowPicker(true);
         }}
         className="border border-gray-200 rounded-2xl p-4 flex-row items-center gap-2 bg-white"
       >
-        <CalendarDays size={16} color="#6B7280" />
+        {mode === "time" ? (
+          <Clock size={16} color="#6B7280" />
+        ) : (
+          <CalendarDays size={16} color="#6B7280" />
+        )}
         <Text
           className={`text-base ${
             display ? "text-gray-900" : "text-gray-400"

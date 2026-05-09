@@ -8,6 +8,7 @@ import {
   Users,
   Anchor,
   UserCog,
+  UserPlus,
   LogOut,
 } from "lucide-react-native";
 
@@ -116,6 +117,22 @@ export default function SettingsScreen() {
             <Text className="font-black text-sm text-gray-900">장비 관리</Text>
             <Text className="text-[10px] text-gray-500">
               보유 다이빙 장비를 등록하고 관리해요
+            </Text>
+          </View>
+          <ChevronRight size={16} color="#D1D5DB" />
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/buddies" as never)}
+          className="bg-white p-4 rounded-2xl flex-row items-center gap-3 mb-2"
+        >
+          <View className="w-10 h-10 rounded-2xl bg-brand-50 items-center justify-center">
+            <UserPlus size={18} color={colors.brand[700]} />
+          </View>
+          <View className="flex-1">
+            <Text className="font-black text-sm text-gray-900">버디 관리</Text>
+            <Text className="text-[10px] text-gray-500">
+              자주 함께 다이빙하는 버디를 등록해요
             </Text>
           </View>
           <ChevronRight size={16} color="#D1D5DB" />

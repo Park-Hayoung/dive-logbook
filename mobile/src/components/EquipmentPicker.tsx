@@ -17,12 +17,13 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Plus, X, Search, Anchor } from "lucide-react-native";
+import { Plus, X, Search, Anchor, Globe } from "lucide-react-native";
 
 import {
   CATEGORY_LABEL,
   EQUIPMENT_CATEGORIES,
   displayName,
+  useEquipmentSearch,
   type EquipmentCategory,
   type UserEquipment,
 } from "@/src/hooks/use-equipment";
@@ -114,6 +115,12 @@ type ModalProps = {
     category: EquipmentCategory;
   }) => Promise<void>;
   creating: boolean;
+  // 카탈로그 검색 결과에서 바로 선택했을 때. 호출되면 user_equipment 에 자동 등록 +
+  // 이번 다이브 선택에도 반영. 미지정 시 카탈로그 검색 섹션은 노출되지 않음.
+  onPickFromCatalog?: (input: {
+    equipmentId: string;
+    category: EquipmentCategory;
+  }) => Promise<void>;
 };
 
 export function EquipmentPickerModal({
@@ -124,6 +131,7 @@ export function EquipmentPickerModal({
   onPick,
   onCreateInline,
   creating,
+  onPickFromCatalog,
 }: ModalProps) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<EquipmentCategory | null>(
@@ -133,8 +141,12 @@ export function EquipmentPickerModal({
   const [newCategory, setNewCategory] = useState<EquipmentCategory>("BCD");
   const [newBrand, setNewBrand] = useState("");
   const [newModel, setNewModel] = useState("");
+  const [registeringCatalogId, setRegisteringCatalogId] = useState<string | null>(
+    null,
+  );
 
-  const trimmed = query.trim().toLowerCase();
+  const trimmedRaw = query.trim();
+  const trimmed = trimmedRaw.toLowerCase();
 
   const filtered = useMemo(() => {
     return items.filter((it) => {
@@ -151,12 +163,38 @@ export function EquipmentPickerModal({
     });
   }, [items, trimmed, categoryFilter]);
 
+  // 검색어 있을 때만 전체 카탈로그 검색. onPickFromCatalog 가 없으면 비활성.
+  const catalogEnabled = !!onPickFromCatalog && trimmedRaw.length >= 1;
+  const { data: catalogResults, isFetching: catalogSearching } =
+    useEquipmentSearch(catalogEnabled ? trimmedRaw : "");
+
+  // 이미 보유 중인 카탈로그 항목은 검색 섹션에서 제외 (중복 노출 방지).
+  const ownedCatalogIds = useMemo(
+    () =>
+      new Set(
+        items
+          .map((i) => i.equipmentId)
+          .filter((v): v is string => !!v),
+      ),
+    [items],
+  );
+
+  const filteredCatalog = useMemo(() => {
+    if (!catalogEnabled) return [];
+    return (catalogResults ?? []).filter((r) => {
+      if (categoryFilter && r.category !== categoryFilter) return false;
+      if (r.kind === "catalog" && ownedCatalogIds.has(r.id)) return false;
+      return true;
+    });
+  }, [catalogResults, ownedCatalogIds, categoryFilter, catalogEnabled]);
+
   const handleClose = () => {
     setQuery("");
     setCategoryFilter(null);
     setShowAddForm(false);
     setNewBrand("");
     setNewModel("");
+    setRegisteringCatalogId(null);
     onClose();
   };
 
@@ -169,6 +207,28 @@ export function EquipmentPickerModal({
     setNewModel("");
     setShowAddForm(false);
     handleClose();
+  };
+
+  // 카탈로그 정확 매칭 항목 → 클릭 한 번에 user_equipment 등록 + 선택.
+  const handlePickCatalog = async (
+    equipmentId: string,
+    category: EquipmentCategory,
+  ) => {
+    if (!onPickFromCatalog || registeringCatalogId) return;
+    setRegisteringCatalogId(equipmentId);
+    try {
+      await onPickFromCatalog({ equipmentId, category });
+      handleClose();
+    } finally {
+      setRegisteringCatalogId(null);
+    }
+  };
+
+  // 브랜드 카드 → 모델명이 없으니 인라인 폼으로 prefill 해서 사용자가 모델명 입력하게.
+  const handlePickBrand = (brand: string, category: EquipmentCategory) => {
+    setNewBrand(brand);
+    setNewCategory(category);
+    setShowAddForm(true);
   };
 
   return (
@@ -225,69 +285,160 @@ export function EquipmentPickerModal({
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 16 }}
           keyboardShouldPersistTaps="handled"
         >
-          {filtered.length === 0 ? (
+          {/* 내 장비 섹션 */}
+          {items.length === 0 && !trimmed && !categoryFilter ? (
             <View className="bg-white p-8 rounded-3xl items-center">
               <Text className="text-gray-400 text-xs text-center leading-5">
-                {trimmed || categoryFilter
-                  ? "조건에 맞는 보유 장비가 없어요."
-                  : "아직 등록된 장비가 없어요."}
-                {"\n"}
-                아래 버튼으로 직접 추가할 수 있어요.
+                아직 등록된 장비가 없어요.{"\n"}
+                위에서 검색해 바로 추가하거나, 아래 버튼으로 직접 추가할 수 있어요.
               </Text>
             </View>
           ) : (
             <View className="gap-2">
-              {filtered.map((it) => {
-                const checked = selectedIds.has(it.id);
-                const { brand, model } = displayName(it);
-                return (
-                  <Pressable
-                    key={it.id}
-                    onPress={() => {
-                      onPick(it.id);
-                      handleClose();
-                    }}
-                    className={`flex-row items-center gap-3 p-3 rounded-2xl border ${
-                      checked
-                        ? "bg-brand-50 border-brand-200"
-                        : "bg-white border-gray-200"
-                    }`}
-                  >
-                    <View className="w-10 h-10 rounded-xl bg-brand-50 items-center justify-center">
-                      <Anchor size={18} color={colors.brand[700]} />
-                    </View>
-                    <View className="flex-1 min-w-0">
-                      <Text className="text-[10px] font-black text-brand-700 uppercase">
-                        {CATEGORY_LABEL[it.category] ?? it.category}
-                      </Text>
-                      <Text
-                        className="text-sm font-black text-gray-900"
-                        numberOfLines={1}
-                      >
-                        {brand}
-                      </Text>
-                      <Text
-                        className="text-[11px] text-gray-500"
-                        numberOfLines={1}
-                      >
-                        {model}
-                      </Text>
-                    </View>
-                    {checked ? (
-                      <View className="bg-brand-600 px-2 py-1 rounded-full">
-                        <Text className="text-brand-fg text-[10px] font-black">
-                          선택됨
+              <View className="flex-row items-center gap-1.5 px-1">
+                <Anchor size={12} color={colors.brand[700]} />
+                <Text className="text-[11px] font-black text-gray-500 uppercase">
+                  내 장비
+                </Text>
+              </View>
+              {filtered.length === 0 ? (
+                <View className="bg-white p-5 rounded-2xl">
+                  <Text className="text-[11px] text-gray-400 text-center">
+                    {trimmed || categoryFilter
+                      ? "조건에 맞는 보유 장비가 없어요."
+                      : "아직 등록된 장비가 없어요."}
+                  </Text>
+                </View>
+              ) : (
+                filtered.map((it) => {
+                  const checked = selectedIds.has(it.id);
+                  const { brand, model } = displayName(it);
+                  return (
+                    <Pressable
+                      key={it.id}
+                      onPress={() => {
+                        onPick(it.id);
+                        handleClose();
+                      }}
+                      className={`flex-row items-center gap-3 p-3 rounded-2xl border ${
+                        checked
+                          ? "bg-brand-50 border-brand-200"
+                          : "bg-white border-gray-200"
+                      }`}
+                    >
+                      <View className="w-10 h-10 rounded-xl bg-brand-50 items-center justify-center">
+                        <Anchor size={18} color={colors.brand[700]} />
+                      </View>
+                      <View className="flex-1 min-w-0">
+                        <Text className="text-[10px] font-black text-brand-700 uppercase">
+                          {CATEGORY_LABEL[it.category] ?? it.category}
+                        </Text>
+                        <Text
+                          className="text-sm font-black text-gray-900"
+                          numberOfLines={1}
+                        >
+                          {brand}
+                        </Text>
+                        <Text
+                          className="text-[11px] text-gray-500"
+                          numberOfLines={1}
+                        >
+                          {model}
                         </Text>
                       </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
+                      {checked ? (
+                        <View className="bg-brand-600 px-2 py-1 rounded-full">
+                          <Text className="text-brand-fg text-[10px] font-black">
+                            선택됨
+                          </Text>
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                })
+              )}
             </View>
           )}
+
+          {/* 검색 결과 (전체 카탈로그) — 검색어 있고 onPickFromCatalog 제공 시에만 노출 */}
+          {catalogEnabled ? (
+            <View className="gap-2">
+              <View className="flex-row items-center gap-1.5 px-1">
+                <Globe size={12} color="#B45309" />
+                <Text className="text-[11px] font-black text-amber-700 uppercase">
+                  새로 추가 (전체 카탈로그)
+                </Text>
+              </View>
+              {catalogSearching ? (
+                <View className="bg-amber-50/50 p-5 rounded-2xl items-center border border-amber-100">
+                  <ActivityIndicator color="#B45309" />
+                </View>
+              ) : filteredCatalog.length === 0 ? (
+                <View className="bg-amber-50/50 p-5 rounded-2xl border border-amber-100">
+                  <Text className="text-[11px] text-amber-700 text-center">
+                    일치하는 카탈로그 항목이 없어요. 아래에서 직접 추가할 수
+                    있어요.
+                  </Text>
+                </View>
+              ) : (
+                filteredCatalog.map((r) => {
+                  const isCatalog = r.kind === "catalog";
+                  const isRegistering =
+                    isCatalog && registeringCatalogId === r.id;
+                  return (
+                    <Pressable
+                      key={isCatalog ? `c-${r.id}` : `b-${r.brand}-${r.category}`}
+                      disabled={!!registeringCatalogId}
+                      onPress={() => {
+                        if (isCatalog) {
+                          handlePickCatalog(r.id, r.category);
+                        } else {
+                          handlePickBrand(r.brand, r.category);
+                        }
+                      }}
+                      className="flex-row items-center gap-3 p-3 rounded-2xl border bg-amber-50/60 border-amber-200"
+                    >
+                      <View className="w-10 h-10 rounded-xl bg-amber-100 items-center justify-center">
+                        <Anchor size={18} color="#B45309" />
+                      </View>
+                      <View className="flex-1 min-w-0">
+                        <Text className="text-[10px] font-black text-amber-700 uppercase">
+                          {CATEGORY_LABEL[r.category] ?? r.category}
+                        </Text>
+                        <Text
+                          className="text-sm font-black text-gray-900"
+                          numberOfLines={1}
+                        >
+                          {r.brand ?? "—"}
+                        </Text>
+                        <Text
+                          className="text-[11px] text-gray-500"
+                          numberOfLines={1}
+                        >
+                          {isCatalog
+                            ? r.model
+                            : "브랜드만 등록됨 · 모델명 입력 필요"}
+                        </Text>
+                      </View>
+                      {isRegistering ? (
+                        <ActivityIndicator size="small" color={colors.brand[700]} />
+                      ) : (
+                        <View className="flex-row items-center gap-1 bg-brand-600 px-3 py-1.5 rounded-full">
+                          <Plus size={12} color={colors.brand.fg} />
+                          <Text className="text-[10px] font-black text-brand-fg">
+                            {isCatalog ? "추가" : "모델 입력"}
+                          </Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })
+              )}
+            </View>
+          ) : null}
         </ScrollView>
 
         {/* 하단: 직접 추가 영역 */}

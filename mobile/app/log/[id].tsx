@@ -10,6 +10,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -26,6 +27,8 @@ import {
   Pencil,
   Trash2,
   X,
+  User,
+  Users,
 } from "lucide-react-native";
 
 import {
@@ -33,6 +36,7 @@ import {
   useDeleteDive,
   useDiveEquipmentDetails,
 } from "@/src/hooks/use-dives";
+import { useDiveBuddyProfiles } from "@/src/hooks/use-buddies";
 import { useCreateFeed } from "@/src/hooks/use-feeds";
 import { useDiveMedia } from "@/src/hooks/use-dive-media";
 import { useDiveGasMixes } from "@/src/hooks/use-dive-samples";
@@ -80,6 +84,8 @@ export default function LogDetailScreen() {
   const { data: dive, isLoading } = useDive(id);
   const { data: equipment = [], isLoading: equipmentLoading } =
     useDiveEquipmentDetails(id);
+  const { data: buddies = [], isLoading: buddiesLoading } =
+    useDiveBuddyProfiles(id);
   const { data: media = [] } = useDiveMedia(id);
   const { data: gasMixes = [] } = useDiveGasMixes(id);
   const createFeed = useCreateFeed(userId);
@@ -499,6 +505,55 @@ export default function LogDetailScreen() {
                       </Text>
                     </View>
                   </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          <View className="bg-white p-5 rounded-3xl border border-gray-100 mt-3">
+            <View className="flex-row items-center gap-1.5 mb-3">
+              <Users size={12} color="#9CA3AF" />
+              <Text className="text-[10px] font-black text-gray-400 uppercase">
+                함께한 버디
+              </Text>
+            </View>
+            {buddiesLoading ? (
+              <ActivityIndicator size="small" />
+            ) : buddies.length === 0 ? (
+              <Text className="text-xs text-gray-400">
+                기록된 버디가 없어요.
+              </Text>
+            ) : (
+              <View className="flex-row flex-wrap gap-2">
+                {buddies.map((b) => (
+                  <Pressable
+                    key={b.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/profile/[id]",
+                        params: { id: b.id },
+                      })
+                    }
+                    className="flex-row items-center gap-2 bg-brand-50 border border-brand-100 rounded-2xl pl-2 pr-3 py-1.5"
+                  >
+                    {b.profileImageUrl ? (
+                      <Image
+                        source={{ uri: b.profileImageUrl }}
+                        style={{ width: 28, height: 28, borderRadius: 14 }}
+                        className="bg-white"
+                      />
+                    ) : (
+                      <View className="w-7 h-7 rounded-full bg-white items-center justify-center">
+                        <User size={13} color={colors.brand[700]} />
+                      </View>
+                    )}
+                    <Text
+                      className="text-xs font-black text-gray-900 max-w-[140px]"
+                      numberOfLines={1}
+                    >
+                      {b.nickname}
+                    </Text>
+                  </Pressable>
                 ))}
               </View>
             )}

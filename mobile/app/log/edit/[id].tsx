@@ -18,9 +18,6 @@ import {
   Cloud,
   CloudRain,
   Moon,
-  Ship,
-  Waves,
-  Anchor,
   Wind,
   ShieldCheck,
 } from "lucide-react-native";
@@ -32,6 +29,10 @@ import {
   EquipmentPickerField,
   EquipmentPickerModal,
 } from "@/src/components/EquipmentPicker";
+import {
+  BuddyPickerField,
+  BuddyPickerModal,
+} from "@/src/components/BuddyPicker";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
 import {
@@ -39,6 +40,12 @@ import {
   useRegisterEquipment,
   type EquipmentCategory,
 } from "@/src/hooks/use-equipment";
+import {
+  useUserBuddies,
+  useDiveBuddies,
+  useAddBuddy,
+  type BuddyProfile,
+} from "@/src/hooks/use-buddies";
 import {
   useDive,
   useUpdateDive,
@@ -49,14 +56,13 @@ import {
   emptyLocation,
   type LocationFieldValue,
 } from "@/src/components/LocationField";
-import type { EntryType, CurrentStrength } from "@/src/types/dive";
+import type { CurrentStrength } from "@/src/types/dive";
 
 type FieldKey =
   | "maxDepth"
   | "avgDepth"
   | "waterTemp"
   | "visibility"
-  | "durationMinutes"
   | "memo"
   | "tankVolumeL"
   | "tankStartBar"
@@ -64,6 +70,26 @@ type FieldKey =
   | "surfaceIntervalMin";
 
 type FormState = Record<FieldKey, string>;
+
+const combineDateAndTime = (date: Date, time: Date): Date => {
+  const out = new Date(date);
+  out.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  return out;
+};
+
+const computeDurationMinutes = (
+  date: Date | null,
+  entry: Date | null,
+  exit: Date | null,
+): number | null => {
+  if (!date || !entry || !exit) return null;
+  const start = combineDateAndTime(date, entry);
+  let end = combineDateAndTime(date, exit);
+  if (end.getTime() <= start.getTime()) {
+    end = new Date(end.getTime() + 24 * 60 * 60_000);
+  }
+  return Math.round((end.getTime() - start.getTime()) / 60_000);
+};
 
 type WeatherCode = "sunny" | "cloudy" | "rainy" | "night";
 
@@ -76,26 +102,6 @@ const WEATHER_OPTIONS: readonly {
   { code: "cloudy", label: "구름", Icon: Cloud },
   { code: "rainy", label: "비", Icon: CloudRain },
   { code: "night", label: "밤", Icon: Moon },
-];
-
-const ENTRY_TYPE_OPTIONS: ReadonlyArray<{
-  code: EntryType;
-  label: string;
-  Icon: typeof Sun;
-}> = [
-  { code: "boat", label: "보트", Icon: Ship },
-  { code: "shore", label: "비치", Icon: Waves },
-  { code: "liveaboard", label: "리브어보드", Icon: Anchor },
-];
-
-const STYLE_OPTIONS: ReadonlyArray<{ code: string; label: string }> = [
-  { code: "drift", label: "드리프트" },
-  { code: "wreck", label: "랙" },
-  { code: "night", label: "야간" },
-  { code: "deep", label: "딥" },
-  { code: "wall", label: "월" },
-  { code: "cave", label: "케이브" },
-  { code: "training", label: "교육" },
 ];
 
 const CURRENT_OPTIONS: ReadonlyArray<{ code: CurrentStrength; label: string }> = [
@@ -126,16 +132,18 @@ export default function EditLogScreen() {
 
   const { data: dive, isLoading: diveLoading } = useDive(id);
   const { data: linkedIds } = useDiveUserEquipment(id);
+  const { data: linkedBuddyIds } = useDiveBuddies(id);
   const { data: userEquipment } = useUserEquipment(userId);
+  const { data: userBuddies } = useUserBuddies(userId);
   const updateDive = useUpdateDive(userId);
   const registerEquipment = useRegisterEquipment(userId);
+  const addBuddy = useAddBuddy(userId);
 
   const [form, setForm] = useState<FormState>({
     maxDepth: "",
     avgDepth: "",
     waterTemp: "",
     visibility: "",
-    durationMinutes: "",
     memo: "",
     tankVolumeL: "",
     tankStartBar: "",
@@ -143,16 +151,44 @@ export default function EditLogScreen() {
     surfaceIntervalMin: "",
   });
   const [location, setLocation] = useState<LocationFieldValue>(emptyLocation);
-  const [diveStart, setDiveStart] = useState<Date | null>(null);
+  const [diveDate, setDiveDate] = useState<Date | null>(null);
+  const [entryTime, setEntryTime] = useState<Date | null>(null);
+  const [exitTime, setExitTime] = useState<Date | null>(null);
+
+  const durationMinutes = useMemo(
+    () => computeDurationMinutes(diveDate, entryTime, exitTime),
+    [diveDate, entryTime, exitTime],
+  );
   const [weather, setWeather] = useState<WeatherCode>("sunny");
-  const [entryType, setEntryType] = useState<EntryType | null>(null);
-  const [diveStyle, setDiveStyle] = useState<Set<string>>(new Set());
   const [currentStrength, setCurrentStrength] =
     useState<CurrentStrength | null>(null);
   const [selectedEqIds, setSelectedEqIds] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedBuddyIds, setSelectedBuddyIds] = useState<Set<string>>(
+    new Set(),
+  );
+  // 검색에서 새로 고른, 아직 user_buddies 에 없는 프로필. 저장 시점에 등록됨.
+  const [pendingNewBuddies, setPendingNewBuddies] = useState<
+    Map<string, BuddyProfile>
+  >(new Map());
+  const [buddyPickerOpen, setBuddyPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+
+  const toggleBuddy = (id: string) => {
+    setSelectedBuddyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setPendingNewBuddies((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
   // BLE 측정 필드는 is_verified=true 일 때 잠긴다.
   const isLocked = !!dive?.isVerified;
@@ -168,7 +204,6 @@ export default function EditLogScreen() {
       avgDepth: dive.avgDepth ? dive.avgDepth.toFixed(1) : "",
       waterTemp: dive.waterTemp ? dive.waterTemp.toFixed(1) : "",
       visibility: dive.visibility ? String(dive.visibility) : "",
-      durationMinutes: String(dive.durationMinutes),
       memo: dive.memo ?? "",
       tankVolumeL: dive.tankVolumeL ? dive.tankVolumeL.toFixed(1) : "",
       tankStartBar: dive.tankStartBar ? dive.tankStartBar.toFixed(0) : "",
@@ -187,16 +222,19 @@ export default function EditLogScreen() {
       placeId: dive.placeId ?? null,
       source: "manual",
     });
-    setDiveStart(new Date(dive.startedAt));
+    const start = new Date(dive.startedAt);
+    const end = new Date(dive.endedAt);
+    setDiveDate(start);
+    setEntryTime(start);
+    setExitTime(end);
     setWeather(WEATHER_LABEL_TO_CODE[dive.weather] ?? "sunny");
-    setEntryType(dive.entryType ?? null);
-    setDiveStyle(new Set(dive.diveStyle ?? []));
     setCurrentStrength(dive.currentStrength ?? null);
-    if (linkedIds) {
+    if (linkedIds && linkedBuddyIds) {
       setSelectedEqIds(new Set(linkedIds));
+      setSelectedBuddyIds(new Set(linkedBuddyIds));
       setHydrated(true);
     }
-  }, [dive, linkedIds, hydrated]);
+  }, [dive, linkedIds, linkedBuddyIds, hydrated]);
 
   const update = (key: FieldKey, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -209,14 +247,6 @@ export default function EditLogScreen() {
       return next;
     });
   };
-
-  const toggleStyle = (code: string) =>
-    setDiveStyle((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
 
   const handleCreateInline = async (input: {
     brand: string;
@@ -252,21 +282,48 @@ export default function EditLogScreen() {
         return;
       }
       maxDepth = md;
-      const dur = parseNumber(form.durationMinutes);
-      if (dur === null || dur <= 0) {
-        showAlert("다이브 시간", "분 단위 숫자를 입력해주세요.");
+      if (!diveDate || !entryTime || !exitTime) {
+        showAlert(
+          "다이브 시간",
+          "날짜, 입수 시간, 출수 시간을 모두 선택해주세요.",
+        );
         return;
       }
-      duration = dur;
+      if (durationMinutes === null || durationMinutes <= 0) {
+        showAlert("다이브 시간", "출수 시간이 입수 시간보다 늦어야 해요.");
+        return;
+      }
+      duration = durationMinutes;
     }
 
     setSubmitting(true);
     try {
-      const startedAt = diveStart ?? new Date(dive.startedAt);
-      const endedAt =
-        duration !== undefined
-          ? new Date(startedAt.getTime() + duration * 60_000)
-          : new Date(dive.endedAt);
+      const startedAt =
+        diveDate && entryTime
+          ? combineDateAndTime(diveDate, entryTime)
+          : new Date(dive.startedAt);
+      let endedAt: Date;
+      if (diveDate && entryTime && exitTime && !isLocked) {
+        endedAt = combineDateAndTime(diveDate, exitTime);
+        if (endedAt.getTime() <= startedAt.getTime()) {
+          endedAt = new Date(endedAt.getTime() + 24 * 60 * 60_000);
+        }
+      } else {
+        endedAt = new Date(dive.endedAt);
+      }
+
+      // 검색에서 새로 추가한 사람 → 내 버디 리스트(user_buddies)에도 등록.
+      // dive_buddies 업데이트 전에 처리해 동시 INSERT 충돌 회피.
+      const pendingToRegister = [...pendingNewBuddies.keys()].filter((id) =>
+        selectedBuddyIds.has(id),
+      );
+      for (const buddyId of pendingToRegister) {
+        try {
+          await addBuddy.mutateAsync(buddyId);
+        } catch (e) {
+          console.warn("user_buddies insert failed for", buddyId, e);
+        }
+      }
 
       await updateDive.mutateAsync({
         diveId: dive.id,
@@ -280,12 +337,11 @@ export default function EditLogScreen() {
           visibility: parseNumber(form.visibility),
           weather,
           memo: form.memo.trim() || null,
-          entryType,
-          diveStyle: diveStyle.size > 0 ? [...diveStyle] : null,
           currentStrength,
           surfaceIntervalMin: parseNumber(form.surfaceIntervalMin),
           tankVolumeL: parseNumber(form.tankVolumeL),
           userEquipmentIds: [...selectedEqIds],
+          buddyUserIds: [...selectedBuddyIds],
           // BLE-locked: only include depth/time/temp when not verified.
           ...(isLocked
             ? {}
@@ -387,14 +443,37 @@ export default function EditLogScreen() {
         />
 
         <DateField
-          label="다이브 시작"
-          value={diveStart}
-          onChange={setDiveStart}
-          mode="datetime"
-          placeholder="날짜 + 시각"
+          label={"다이브 날짜" + (isLocked ? "" : " *")}
+          value={diveDate}
+          onChange={setDiveDate}
+          mode="date"
+          placeholder="YYYY-MM-DD"
           disabled={!lockedEditable}
           maximumDate={new Date()}
         />
+
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <DateField
+              label={"입수 시간" + (isLocked ? "" : " *")}
+              value={entryTime}
+              onChange={setEntryTime}
+              mode="time"
+              placeholder="HH:MM"
+              disabled={!lockedEditable}
+            />
+          </View>
+          <View className="flex-1">
+            <DateField
+              label={"출수 시간" + (isLocked ? "" : " *")}
+              value={exitTime}
+              onChange={setExitTime}
+              mode="time"
+              placeholder="HH:MM"
+              disabled={!lockedEditable}
+            />
+          </View>
+        </View>
 
         <View className="flex-row gap-3">
           <View className="flex-1">
@@ -442,11 +521,21 @@ export default function EditLogScreen() {
         </View>
 
         <Field
-          label={"다이브 시간 (분)" + (isLocked ? "" : " *")}
-          value={form.durationMinutes}
-          onChangeText={(v) => update("durationMinutes", v)}
+          label={
+            isLocked ? "다이브 시간 (분)" : "다이브 시간 (분) (자동 계산)"
+          }
+          value={
+            isLocked
+              ? String(dive.durationMinutes)
+              : durationMinutes !== null
+              ? String(durationMinutes)
+              : ""
+          }
+          onChangeText={() => {
+            /* 입수/출수 시간으로 자동 계산되는 값이라 수정 불가 */
+          }}
           keyboardType="number-pad"
-          editable={lockedEditable}
+          editable={false}
           locked={isLocked}
         />
 
@@ -482,71 +571,6 @@ export default function EditLogScreen() {
                 locked={tankEndLocked}
               />
             </View>
-          </View>
-        </View>
-
-        <View className="gap-2">
-          <Text className="text-xs font-bold text-gray-700">진입 방식</Text>
-          <View className="flex-row gap-2">
-            {ENTRY_TYPE_OPTIONS.map(({ code, label, Icon }) => {
-              const active = entryType === code;
-              return (
-                <Pressable
-                  key={code}
-                  onPress={() =>
-                    setEntryType((prev) => (prev === code ? null : code))
-                  }
-                  disabled={!editable}
-                  className={`flex-1 items-center gap-1 py-3 rounded-2xl border ${
-                    active
-                      ? "bg-brand-600 border-brand-600"
-                      : "bg-white border-gray-200"
-                  }`}
-                >
-                  <Icon
-                    size={18}
-                    color={active ? "#FFFFFF" : "#6B7280"}
-                    strokeWidth={active ? 2.5 : 2}
-                  />
-                  <Text
-                    className={`text-[10px] font-black ${
-                      active ? "text-brand-fg" : "text-gray-700"
-                    }`}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <View className="gap-2">
-          <Text className="text-xs font-bold text-gray-700">스타일</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {STYLE_OPTIONS.map(({ code, label }) => {
-              const active = diveStyle.has(code);
-              return (
-                <Pressable
-                  key={code}
-                  onPress={() => toggleStyle(code)}
-                  disabled={!editable}
-                  className={`px-3 py-2 rounded-full border ${
-                    active
-                      ? "bg-brand-600 border-brand-600"
-                      : "bg-white border-gray-200"
-                  }`}
-                >
-                  <Text
-                    className={`text-[11px] font-black ${
-                      active ? "text-brand-fg" : "text-gray-700"
-                    }`}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
           </View>
         </View>
 
@@ -637,6 +661,15 @@ export default function EditLogScreen() {
           disabled={!editable}
         />
 
+        <BuddyPickerField
+          items={userBuddies ?? []}
+          pendingProfiles={Array.from(pendingNewBuddies.values())}
+          selectedIds={selectedBuddyIds}
+          onToggle={toggleBuddy}
+          onOpenPicker={() => setBuddyPickerOpen(true)}
+          disabled={!editable}
+        />
+
         <View className="gap-1">
           <Text className="text-xs font-bold text-gray-700">메모</Text>
           <TextInput
@@ -673,6 +706,34 @@ export default function EditLogScreen() {
         onPick={(id) => setSelectedEqIds((prev) => new Set(prev).add(id))}
         onCreateInline={handleCreateInline}
         creating={registerEquipment.isPending}
+        onPickFromCatalog={async ({ equipmentId, category }) => {
+          const created = await registerEquipment.mutateAsync({
+            kind: "catalog",
+            equipmentId,
+            category,
+          });
+          setSelectedEqIds((prev) => new Set(prev).add(created.id));
+        }}
+      />
+
+      <BuddyPickerModal
+        visible={buddyPickerOpen}
+        onClose={() => setBuddyPickerOpen(false)}
+        items={userBuddies ?? []}
+        selectedIds={selectedBuddyIds}
+        onPick={(id) =>
+          setSelectedBuddyIds((prev) => new Set(prev).add(id))
+        }
+        onGoToManage={() => router.push("/buddies" as never)}
+        currentUserId={userId}
+        onPickNew={(profile) => {
+          setSelectedBuddyIds((prev) => new Set(prev).add(profile.id));
+          setPendingNewBuddies((prev) => {
+            const next = new Map(prev);
+            next.set(profile.id, profile);
+            return next;
+          });
+        }}
       />
     </SafeAreaView>
   );

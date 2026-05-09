@@ -995,6 +995,39 @@ export type Database = {
           },
         ]
       }
+      user_buddies: {
+        Row: {
+          buddy_id: string
+          created_at: string | null
+          user_id: string
+        }
+        Insert: {
+          buddy_id: string
+          created_at?: string | null
+          user_id: string
+        }
+        Update: {
+          buddy_id?: string
+          created_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_buddies_buddy_id_fkey"
+            columns: ["buddy_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_buddies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_equipment: {
         Row: {
           category: string

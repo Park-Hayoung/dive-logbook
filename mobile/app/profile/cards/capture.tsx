@@ -99,9 +99,15 @@ export default function CardCaptureScreen() {
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
 
+      // source=camera 로 add 화면에 실물 카드 디폴트를 알려준다.
+      const params: Record<string, string> = {
+        uri: out.uri,
+        source: "camera",
+      };
+      if (from) params.from = from;
       router.replace({
         pathname: "/profile/cards/add" as never,
-        params: from ? { uri: out.uri, from } : { uri: out.uri },
+        params,
       } as never);
     } catch (err) {
       showAlert("처리 실패", "이미지를 잘라내지 못했어요. 다시 시도해주세요.");
@@ -133,16 +139,17 @@ export default function CardCaptureScreen() {
       showAlert("권한 필요", "사진 라이브러리 접근 권한을 허용해주세요.");
       return;
     }
+    // No forced crop — e카드(스크린샷) 는 본체+만료일·강사 등 메타가 한 화면에
+    // 같이 들어가 있어 비율 강제하면 정보가 잘림. 사용자가 의도적으로 잘라두고
+    // 싶으면 갤러리/사진 앱에서 미리 처리 후 가져오면 됨.
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [86, 54],
+      allowsEditing: false,
       quality: 0.9,
     });
     if (picked.canceled) return;
     const asset = picked.assets[0];
     if (!asset) return;
-    // Gallery already cropped to card aspect — just downscale.
     setBusy(true);
     try {
       const out = await ImageManipulator.manipulateAsync(
@@ -150,9 +157,15 @@ export default function CardCaptureScreen() {
         [{ resize: { width: 1600 } }],
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
+      // source=gallery 로 add 화면에 e카드 디폴트를 알려준다.
+      const params: Record<string, string> = {
+        uri: out.uri,
+        source: "gallery",
+      };
+      if (from) params.from = from;
       router.replace({
         pathname: "/profile/cards/add" as never,
-        params: from ? { uri: out.uri, from } : { uri: out.uri },
+        params,
       } as never);
     } finally {
       setBusy(false);

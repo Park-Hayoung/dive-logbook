@@ -149,18 +149,34 @@ function CardRow({
 }) {
   return (
     <View className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
-      <View style={{ aspectRatio: 85.6 / 53.98, backgroundColor: "#F3F4F6" }}>
+      <View
+        style={{
+          backgroundColor: "#F3F4F6",
+          // 실물 카드는 카드 비율로 보여주는 게 자연스럽지만 e카드는 본체+메타가
+          // 함께 들어 있어 contain 으로 원본 비율 유지.
+          ...(cert.card_type === "physical"
+            ? { aspectRatio: 85.6 / 53.98 }
+            : { height: 220 }),
+        }}
+      >
         <Image
           source={{ uri: cert.card_image_url }}
           style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
+          contentFit={cert.card_type === "physical" ? "cover" : "contain"}
         />
-        {cert.is_primary ? (
-          <View className="absolute top-2 left-2 flex-row items-center gap-1 bg-brand-600 px-2 py-1 rounded-full">
-            <Star size={10} color={colors.brand.fg} fill={colors.brand.fg} />
-            <Text className="text-[10px] font-black text-brand-fg">대표</Text>
-          </View>
-        ) : null}
+        <View className="absolute top-2 left-2 flex-row items-center gap-1.5">
+          {cert.is_primary ? (
+            <View className="flex-row items-center gap-1 bg-brand-600 px-2 py-1 rounded-full">
+              <Star size={10} color={colors.brand.fg} fill={colors.brand.fg} />
+              <Text className="text-[10px] font-black text-brand-fg">대표</Text>
+            </View>
+          ) : null}
+          {cert.card_type === "electronic" ? (
+            <View className="bg-black/60 px-2 py-1 rounded-full">
+              <Text className="text-[10px] font-black text-white">e카드</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
       <View className="p-3 flex-row items-center justify-between">

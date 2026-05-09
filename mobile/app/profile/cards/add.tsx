@@ -15,6 +15,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import {
   useAddCertification,
   useCertifications,
+  type CardType,
 } from "@/src/hooks/use-certifications";
 import { KeyboardSafeScroll } from "@/src/components";
 import { colors } from "@/src/lib/colors";
@@ -46,7 +47,11 @@ const LEVELS = [
 
 export default function CardAddScreen() {
   const router = useRouter();
-  const { uri, from } = useLocalSearchParams<{ uri: string; from?: string }>();
+  const { uri, from, source } = useLocalSearchParams<{
+    uri: string;
+    from?: string;
+    source?: string;
+  }>();
   const userId = useAuthStore((s) => s.user?.id);
   const { data: existing } = useCertifications(userId);
   const add = useAddCertification(userId);
@@ -57,6 +62,11 @@ export default function CardAddScreen() {
   const [levelCustom, setLevelCustom] = useState("");
   const [certNumber, setCertNumber] = useState("");
   const [isPrimary, setIsPrimary] = useState(false);
+  // Heuristic default: 갤러리에서 가져왔으면 e카드, 카메라 촬영이면 실물 카드.
+  // 사용자가 토글로 바꿀 수 있음.
+  const [cardType, setCardType] = useState<CardType>(
+    source === "gallery" ? "electronic" : "physical",
+  );
 
   // First card auto-becomes the primary so the profile badge has something to
   // show without the user having to flip a switch.
@@ -88,6 +98,7 @@ export default function CardAddScreen() {
         level: finalLevel,
         certNumber: certNumber.trim() || null,
         cardLocalUri: uri,
+        cardType,
         isPrimary,
       });
       router.replace({
@@ -118,12 +129,19 @@ export default function CardAddScreen() {
         bottomPadding={120}
       >
         {uri ? (
-          <View className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-100">
-            <View style={{ aspectRatio: 85.6 / 53.98 }}>
+          <View className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-50">
+            <View
+              style={{
+                width: "100%",
+                height: 240,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Image
                 source={{ uri }}
                 style={{ width: "100%", height: "100%" }}
-                contentFit="cover"
+                contentFit="contain"
               />
             </View>
             <Pressable
@@ -134,15 +152,73 @@ export default function CardAddScreen() {
                 } as never)
               }
               disabled={submitting}
-              className="flex-row items-center justify-center gap-2 py-2.5 border-t border-gray-200"
+              className="flex-row items-center justify-center gap-2 py-2.5 border-t border-gray-200 bg-white"
             >
               <RotateCcw size={12} color="#374151" />
               <Text className="text-[11px] font-bold text-gray-700">
-                다시 촬영
+                다시 선택
               </Text>
             </Pressable>
           </View>
         ) : null}
+
+        <View className="gap-1.5">
+          <Text className="text-xs font-bold text-gray-700">카드 종류</Text>
+          <View className="flex-row gap-2">
+            <Pressable
+              onPress={() => setCardType("physical")}
+              disabled={submitting}
+              className={`flex-1 px-3 py-3 rounded-xl border ${
+                cardType === "physical"
+                  ? "bg-brand-600 border-brand-600"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-xs font-black text-center ${
+                  cardType === "physical" ? "text-brand-fg" : "text-gray-700"
+                }`}
+              >
+                실물 카드
+              </Text>
+              <Text
+                className={`text-[10px] text-center mt-0.5 ${
+                  cardType === "physical"
+                    ? "text-brand-fg/80"
+                    : "text-gray-400"
+                }`}
+              >
+                플라스틱 카드 촬영
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setCardType("electronic")}
+              disabled={submitting}
+              className={`flex-1 px-3 py-3 rounded-xl border ${
+                cardType === "electronic"
+                  ? "bg-brand-600 border-brand-600"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-xs font-black text-center ${
+                  cardType === "electronic" ? "text-brand-fg" : "text-gray-700"
+                }`}
+              >
+                e카드
+              </Text>
+              <Text
+                className={`text-[10px] text-center mt-0.5 ${
+                  cardType === "electronic"
+                    ? "text-brand-fg/80"
+                    : "text-gray-400"
+                }`}
+              >
+                앱 스크린샷
+              </Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View className="gap-1.5">
           <Text className="text-xs font-bold text-gray-700">단체</Text>

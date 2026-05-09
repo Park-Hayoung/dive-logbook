@@ -8,6 +8,8 @@ import { mediaStorage } from "@/src/services/media-storage";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
+export type CardType = "physical" | "electronic";
+
 export type Certification = {
   id: string;
   user_id: string;
@@ -17,6 +19,7 @@ export type Certification = {
   issued_on: string | null;
   card_image_url: string;
   card_filename: string;
+  card_type: CardType;
   provider: string | null;
   is_primary: boolean;
   created_at: string;
@@ -55,6 +58,7 @@ export type AddCertificationInput = {
   issuedOn?: string | null; // YYYY-MM-DD
   cardLocalUri: string;
   contentType?: string;
+  cardType: CardType;
   isPrimary?: boolean;
 };
 
@@ -91,6 +95,7 @@ export function useAddCertification(userId: string | undefined) {
           issued_on: input.issuedOn ?? null,
           card_image_url: uploaded.url,
           card_filename: uploaded.filename,
+          card_type: input.cardType,
           provider: uploaded.provider,
           is_primary: !!input.isPrimary,
         })

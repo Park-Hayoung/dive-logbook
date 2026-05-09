@@ -3,6 +3,8 @@
 //
 // Examples: 푸른돌고래, 신비한문어42, 빛나는해파리, 용감한범고래7
 
+import { supabase } from "@/src/services/supabase";
+
 const ADJECTIVES = [
   "푸른",
   "하얀",
@@ -71,4 +73,30 @@ export function randomNickname(): string {
   // ~30% chance to append a 1–99 number for uniqueness in case of collision.
   const suffix = Math.random() < 0.3 ? `${Math.floor(Math.random() * 99) + 1}` : "";
   return `${adj}${creature}${suffix}`;
+}
+
+// Generate a nickname that isn't already taken in the profiles table.
+// Generates a batch of candidates locally, then asks Supabase in a single
+// round-trip which ones are already in use, and picks one of the survivors.
+// If all candidates collide (very unlikely) or the DB call fails, falls back
+// to appending a 4-digit suffix so the user is never shown a known-taken name.
+export async function randomAvailableNickname(): Promise<string> {
+  const BATCH = 8;
+  const candidates = Array.from({ length: BATCH }, () => randomNickname());
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("nickname")
+      .in("nickname", candidates);
+    if (error) throw error;
+    const taken = new Set((data ?? []).map((r) => r.nickname as string));
+    const free = candidates.find((c) => !taken.has(c));
+    if (free) return free;
+  } catch {
+    // Network/permission failure → fall through to suffixed fallback.
+  }
+
+  const base = randomNickname().replace(/\d+$/, "");
+  return `${base}${Math.floor(Math.random() * 9000) + 1000}`;
 }

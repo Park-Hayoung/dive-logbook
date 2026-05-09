@@ -16,9 +16,10 @@ import { supabase } from "@/src/services/supabase";
 import { KeyboardSafeScroll } from "@/src/components";
 import { friendlyError } from "@/src/lib/error-messages";
 import { showAlert } from "@/src/lib/alert";
-import { randomNickname } from "@/src/lib/nickname-generator";
+import { randomAvailableNickname } from "@/src/lib/nickname-generator";
 
 const CERTIFICATIONS = [
+  "없음",
   "Open Water",
   "Advanced",
   "Rescue",
@@ -55,14 +56,34 @@ export default function OnboardingScreen() {
   const [divingOrg, setDivingOrg] = useState<Org>("PADI");
   const [totalDives, setTotalDives] = useState("0");
   const [submitting, setSubmitting] = useState(false);
+  const [generatingNickname, setGeneratingNickname] = useState(false);
+
+  const hasCert = certification !== "없음";
 
   // Pre-fill a fun nickname suggestion on first mount. The user can keep it,
-  // shuffle for a new one, or type their own.
+  // shuffle for a new one, or type their own. We check Supabase so we never
+  // suggest a nickname that's already taken (DB enforces unique on insert).
   useEffect(() => {
-    setNickname(randomNickname());
+    let cancelled = false;
+    void (async () => {
+      setGeneratingNickname(true);
+      const next = await randomAvailableNickname();
+      if (!cancelled) setNickname(next);
+      if (!cancelled) setGeneratingNickname(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const onShuffleNickname = () => setNickname(randomNickname());
+  const onShuffleNickname = async () => {
+    setGeneratingNickname(true);
+    try {
+      setNickname(await randomAvailableNickname());
+    } finally {
+      setGeneratingNickname(false);
+    }
+  };
 
   const onSubmit = async () => {
     if (!user) {
@@ -85,18 +106,21 @@ export default function OnboardingScreen() {
       const { error } = await supabase.from("profiles").insert({
         id: user.id,
         nickname: trimmed,
-        certification,
-        diving_org: divingOrg,
+        certification: hasCert ? certification : null,
+        diving_org: hasCert ? divingOrg : null,
         total_dives_at_signup: dives,
       });
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
-      // Take the user straight to the C-card flow with skip available.
-      // Once they're done (or skip), they land on (tabs).
-      router.replace({
-        pathname: "/profile/cards" as never,
-        params: { from: "onboarding" },
-      } as never);
+      // 자격증이 없으면 C-card 등록 단계는 건너뛰고 바로 메인으로.
+      if (hasCert) {
+        router.replace({
+          pathname: "/profile/cards" as never,
+          params: { from: "onboarding" },
+        } as never);
+      } else {
+        router.replace("/(tabs)" as never);
+      }
     } catch (err: unknown) {
       showAlert("프로필 생성 실패", friendlyError(err));
     } finally {
@@ -117,11 +141,17 @@ export default function OnboardingScreen() {
             <Text className="text-xs font-bold text-gray-700">닉네임</Text>
             <Pressable
               onPress={onShuffleNickname}
-              disabled={submitting}
+              disabled={submitting || generatingNickname}
               hitSlop={6}
-              className="flex-row items-center gap-1 bg-brand-50 px-2.5 py-1 rounded-full"
+              className={`flex-row items-center gap-1 bg-brand-50 px-2.5 py-1 rounded-full ${
+                generatingNickname ? "opacity-60" : ""
+              }`}
             >
-              <Shuffle size={11} color={colors.brand[700]} />
+              {generatingNickname ? (
+                <ActivityIndicator size="small" color={colors.brand[700]} />
+              ) : (
+                <Shuffle size={11} color={colors.brand[700]} />
+              )}
               <Text className="text-[10px] font-black text-brand-700">
                 자동 생성
               </Text>
@@ -168,31 +198,33 @@ export default function OnboardingScreen() {
           </View>
         </View>
 
-        <View className="gap-1">
-          <Text className="text-xs font-bold text-gray-700">다이빙 단체</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {ORGS.map((o) => (
-              <Pressable
-                key={o}
-                onPress={() => setDivingOrg(o)}
-                disabled={submitting}
-                className={`px-3 py-2 rounded-xl border ${
-                  divingOrg === o
-                    ? "bg-brand-600 border-brand-600"
-                    : "bg-white border-gray-200"
-                }`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    divingOrg === o ? "text-brand-fg" : "text-gray-700"
+        {hasCert && (
+          <View className="gap-1">
+            <Text className="text-xs font-bold text-gray-700">다이빙 단체</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {ORGS.map((o) => (
+                <Pressable
+                  key={o}
+                  onPress={() => setDivingOrg(o)}
+                  disabled={submitting}
+                  className={`px-3 py-2 rounded-xl border ${
+                    divingOrg === o
+                      ? "bg-brand-600 border-brand-600"
+                      : "bg-white border-gray-200"
                   }`}
                 >
-                  {o}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    className={`text-xs font-bold ${
+                      divingOrg === o ? "text-brand-fg" : "text-gray-700"
+                    }`}
+                  >
+                    {o}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         <View className="gap-1">
           <Text className="text-xs font-bold text-gray-700">
@@ -209,13 +241,22 @@ export default function OnboardingScreen() {
           />
         </View>
 
-        <View className="flex-row items-start gap-2 bg-brand-50 rounded-2xl p-3 mt-2">
-          <Award size={14} color={colors.brand[700]} />
-          <Text className="text-[10px] text-brand-700 leading-4 flex-1">
-            다음 단계에서 자격증 카드(C-card)를 촬영해 등록할 수 있어요. 건너뛰고
-            나중에 프로필에서 등록해도 돼요.
-          </Text>
-        </View>
+        {hasCert ? (
+          <View className="flex-row items-start gap-2 bg-brand-50 rounded-2xl p-3 mt-2">
+            <Award size={14} color={colors.brand[700]} />
+            <Text className="text-[10px] text-brand-700 leading-4 flex-1">
+              다음 단계에서 자격증 카드(C-card)를 촬영해 등록할 수 있어요.
+              건너뛰고 나중에 프로필에서 등록해도 돼요.
+            </Text>
+          </View>
+        ) : (
+          <View className="flex-row items-start gap-2 bg-gray-50 rounded-2xl p-3 mt-2">
+            <Award size={14} color={colors.text.secondary} />
+            <Text className="text-[10px] text-gray-600 leading-4 flex-1">
+              자격증은 나중에 프로필에서 언제든 추가할 수 있어요.
+            </Text>
+          </View>
+        )}
 
         <Pressable
           onPress={onSubmit}

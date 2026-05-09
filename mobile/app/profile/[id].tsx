@@ -176,12 +176,16 @@ export default function PublicProfileScreen() {
 
           <View className="mt-4">
             <View className="flex-row flex-wrap gap-1.5">
-              <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full">
-                <Award size={12} color={colors.brand[700]} />
-                <Text className="text-[10px] font-black text-brand-700">
-                  {profile.diving_org ?? "—"} · {profile.certification ?? "—"}
-                </Text>
-              </View>
+              {profile.certification || profile.diving_org ? (
+                <View className="flex-row items-center gap-1.5 bg-brand-50 px-3 py-1.5 rounded-full">
+                  <Award size={12} color={colors.brand[700]} />
+                  <Text className="text-[10px] font-black text-brand-700">
+                    {[profile.diving_org, profile.certification]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                </View>
+              ) : null}
               {theirTeam?.team ? (
                 <Pressable
                   onPress={() =>

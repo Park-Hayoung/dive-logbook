@@ -1,14 +1,17 @@
 import { View, Text, Image, Pressable } from "react-native";
-import { ChevronRight, Navigation, Clock } from "lucide-react-native";
+import { ChevronRight, Navigation, Clock, ShieldCheck } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import type { Dive } from "@/src/types/dive";
 import { formatDate } from "@/src/lib/format";
 
 type LogCardProps = {
   dive: Dive;
+  // 화면에 표시할 통산 번호. 미지정 시 DB의 dive_number 로 폴백.
+  // (BLE 임포트된 다이브의 dive_number 는 manifest fingerprint=timestamp 라서 의미 없음)
+  displayNumber?: number;
 };
 
-export function LogCard({ dive }: LogCardProps) {
+export function LogCard({ dive, displayNumber }: LogCardProps) {
   const router = useRouter();
   return (
     <Pressable
@@ -23,9 +26,19 @@ export function LogCard({ dive }: LogCardProps) {
       )}
       <View className="flex-1 min-w-0">
         <View className="flex-row justify-between items-start mb-1">
-          <Text className="text-[10px] text-brand-700 font-black bg-brand-50 px-2 py-0.5 rounded-lg">
-            #{dive.diveNumber}
-          </Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-[10px] text-brand-700 font-black bg-brand-50 px-2 py-0.5 rounded-lg">
+              #{displayNumber ?? dive.diveNumber}
+            </Text>
+            {dive.isVerified && (
+              <View className="flex-row items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <ShieldCheck size={10} color="#059669" />
+                <Text className="text-[10px] font-black text-emerald-700">
+                  Verified
+                </Text>
+              </View>
+            )}
+          </View>
           <Text className="text-[10px] text-gray-400 font-bold">
             {formatDate(dive.startedAt)}
           </Text>

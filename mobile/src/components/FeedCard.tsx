@@ -14,16 +14,7 @@ import {
   FeedMediaCarousel,
   type FeedMediaItem,
 } from "@/src/components/FeedMediaCarousel";
-
-const formatRelative = (iso: string): string => {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return "방금";
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`;
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}.${d.getDate()}`;
-};
+import { formatRelative } from "@/src/lib/format";
 
 // FeedCard sits in a ScrollView with horizontal padding 20, and its own p-4 = 16.
 // So image area width = screen - 40 - 32.

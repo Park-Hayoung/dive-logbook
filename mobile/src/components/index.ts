@@ -14,3 +14,5 @@ export { FeedVideo } from "./FeedVideo";
 export { FeedMediaCarousel, type FeedMediaItem } from "./FeedMediaCarousel";
 export { DiveProfileGraph } from "./DiveProfileGraph";
 export { AvatarCropModal } from "./AvatarCropModal";
+export { BoardPostCard } from "./BoardPostCard";
+export { ReportSheet } from "./ReportSheet";

@@ -13,7 +13,8 @@ export type UploadScope =
   | { type: "avatar" } // user-scoped automatically
   | { type: "feed" } // user-scoped automatically
   | { type: "team"; teamId: string }
-  | { type: "certification" }; // user-scoped automatically (C-card photos)
+  | { type: "certification" } // user-scoped automatically (C-card photos)
+  | { type: "board" }; // user-scoped automatically (community board posts)
 
 export type UploadResult = {
   url: string;

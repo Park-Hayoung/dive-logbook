@@ -17,8 +17,8 @@ node_modules/
 # Expo auto-generated dev state (any subproject)
 .expo/
 
-# Supabase CLI cache (linked-project, cli-latest)
-supabase/.temp/
+# Supabase CLI cache (linked-project, cli-latest) — match any depth
+**/supabase/.temp/
 
 # Build outputs
 dist/
@@ -39,3 +39,6 @@ build/
 
 # OS
 Thumbs.db
+
+# Firebase Admin SDK service account key — never commit
+*-firebase-adminsdk-*.json

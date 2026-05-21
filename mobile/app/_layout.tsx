@@ -1,11 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Redirect, Stack, useSegments } from "expo-router";
+import { Redirect, Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as Notifications from "expo-notifications";
 import "react-native-reanimated";
 import "../global.css";
 
@@ -14,6 +15,17 @@ import { queryClient } from "@/src/lib/query-client";
 import { useAuthStore } from "@/src/store/auth-store";
 import { useProfile } from "@/src/hooks/use-profile";
 import { AlertHost } from "@/src/components/AlertHost";
+import { registerPushTokenForUser } from "@/src/services/push";
+
+// 포그라운드에서 알림 받으면 배너+사운드 표시. (기본은 표시 안 함)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -54,10 +66,33 @@ function RootGuard() {
   const { data: profile, isFetched: isProfileFetched, isError: isProfileError } =
     useProfile(userId);
   const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  // 로그인 사용자 → Expo Push Token 등록 (권한 요청 포함, upsert).
+  // 같은 디바이스에서 계정 전환 시 user_id 자동 갱신 (unique(token) ON CONFLICT).
+  useEffect(() => {
+    if (!userId) return;
+    registerPushTokenForUser(userId).catch((e) =>
+      console.warn("[push] register failed", e),
+    );
+  }, [userId]);
+
+  // 알림 탭 → data.url 로 deep link. payload 예: { url: "/board/<id>" }.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((res) => {
+      const data = res.notification.request.content.data as
+        | { url?: string }
+        | undefined;
+      if (data?.url) {
+        router.push(data.url as never);
+      }
+    });
+    return () => sub.remove();
+  }, [router]);
 
   if (!isHydrated) {
     return <View className="flex-1 bg-white" />;

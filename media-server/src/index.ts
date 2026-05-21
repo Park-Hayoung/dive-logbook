@@ -55,11 +55,14 @@ app.get("/health", (c) => c.json({ ok: true }));
 // 1) Mobile app requests an upload URL.
 //    Auth: Supabase JWT in Authorization: Bearer ...
 //    Body: { kind, diveId?, teamId?, originalFilename, contentType }
-//      kind ∈ "dives" | "avatars" | "feeds" | "teams"  (default: "dives")
-//      - dives:   diveId required; scope is the dive
-//      - teams:   teamId required; scope is the team
-//      - avatars: scope is the authenticated user (auto)
-//      - feeds:   scope is the authenticated user (auto)
+//      kind ∈ "dives" | "avatars" | "feeds" | "teams" | "certifications" | "boards"
+//             (default: "dives")
+//      - dives:          diveId required; scope is the dive
+//      - teams:          teamId required; scope is the team
+//      - avatars:        scope is the authenticated user (auto)
+//      - feeds:          scope is the authenticated user (auto)
+//      - certifications: scope is the authenticated user (auto)
+//      - boards:         scope is the authenticated user (auto)
 //    Returns: { uploadUrl, finalUrl, filename, expiresAt }
 // ---------------------------------------------------------------------------
 app.post("/upload-token", async (c) => {

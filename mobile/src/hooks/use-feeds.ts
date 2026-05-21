@@ -359,9 +359,7 @@ export function useCreateFeed(currentUserId: string | undefined) {
           file_size_bytes: m.fileSizeBytes ?? null,
           original_filename: m.originalFilename ?? null,
         }));
-        // feed_media 타입은 supabase gen types 재실행 후 인식됨. 우회.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: mediaErr } = await (supabase as any)
+        const { error: mediaErr } = await supabase
           .from("feed_media")
           .insert(rows);
         if (mediaErr)

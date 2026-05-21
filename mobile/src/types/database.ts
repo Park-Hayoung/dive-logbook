@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,429 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          payload: Json | null
+          target_id: string
+          target_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          payload?: Json | null
+          target_id: string
+          target_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          payload?: Json | null
+          target_id?: string
+          target_type?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          last_login_at: string | null
+          password_hash: string
+          role: Database["public"]["Enums"]["admin_role"]
+          totp_secret: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          password_hash: string
+          role?: Database["public"]["Enums"]["admin_role"]
+          totp_secret: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          password_hash?: string
+          role?: Database["public"]["Enums"]["admin_role"]
+          totp_secret?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      board_comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "board_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_comment_reports: {
+        Row: {
+          comment_id: string
+          created_at: string
+          detail: string | null
+          id: string
+          reason: Database["public"]["Enums"]["board_report_reason"]
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolver_note: string | null
+          status: Database["public"]["Enums"]["board_report_status"]
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["board_report_reason"]
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolver_note?: string | null
+          status?: Database["public"]["Enums"]["board_report_status"]
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["board_report_reason"]
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolver_note?: string | null
+          status?: Database["public"]["Enums"]["board_report_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_comment_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "board_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comment_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comment_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          parent_comment_id: string | null
+          post_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          parent_comment_id?: string | null
+          post_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          parent_comment_id?: string | null
+          post_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "board_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "board_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_post_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "board_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_post_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_post_media: {
+        Row: {
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          height: number | null
+          id: string
+          kind: string
+          original_filename: string | null
+          post_id: string
+          provider: string | null
+          storage_url: string
+          thumbnail_url: string | null
+          uploaded_at: string
+          width: number | null
+        }
+        Insert: {
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          kind: string
+          original_filename?: string | null
+          post_id: string
+          provider?: string | null
+          storage_url: string
+          thumbnail_url?: string | null
+          uploaded_at?: string
+          width?: number | null
+        }
+        Update: {
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          kind?: string
+          original_filename?: string | null
+          post_id?: string
+          provider?: string | null
+          storage_url?: string
+          thumbnail_url?: string | null
+          uploaded_at?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_post_media_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "board_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_post_reports: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          post_id: string
+          reason: Database["public"]["Enums"]["board_report_reason"]
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolver_note: string | null
+          status: Database["public"]["Enums"]["board_report_status"]
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          post_id: string
+          reason: Database["public"]["Enums"]["board_report_reason"]
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolver_note?: string | null
+          status?: Database["public"]["Enums"]["board_report_status"]
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          post_id?: string
+          reason?: Database["public"]["Enums"]["board_report_reason"]
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolver_note?: string | null
+          status?: Database["public"]["Enums"]["board_report_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_post_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "board_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_post_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_post_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_posts: {
+        Row: {
+          author_id: string
+          category: Database["public"]["Enums"]["board_category"]
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_pinned: boolean
+          title: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          author_id: string
+          category: Database["public"]["Enums"]["board_category"]
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          title: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          author_id?: string
+          category?: Database["public"]["Enums"]["board_category"]
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          title?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dive_buddies: {
         Row: {
           dive_id: string
@@ -436,6 +859,7 @@ export type Database = {
           brand_en: string | null
           category: string
           created_at: string | null
+          created_by: string | null
           id: string
           model: string
           source: string | null
@@ -445,6 +869,7 @@ export type Database = {
           brand_en?: string | null
           category: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
           model: string
           source?: string | null
@@ -454,11 +879,20 @@ export type Database = {
           brand_en?: string | null
           category?: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
           model?: string
           source?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "equipment_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       equipment_brands: {
         Row: {
@@ -486,6 +920,39 @@ export type Database = {
           source?: string | null
         }
         Relationships: []
+      }
+      feed_comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "feed_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feed_comments: {
         Row: {
@@ -555,6 +1022,120 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feed_media: {
+        Row: {
+          duration_seconds: number | null
+          feed_id: string
+          file_size_bytes: number | null
+          height: number | null
+          id: string
+          kind: string
+          original_filename: string | null
+          provider: string | null
+          storage_url: string
+          thumbnail_url: string | null
+          uploaded_at: string | null
+          width: number | null
+        }
+        Insert: {
+          duration_seconds?: number | null
+          feed_id: string
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          kind: string
+          original_filename?: string | null
+          provider?: string | null
+          storage_url: string
+          thumbnail_url?: string | null
+          uploaded_at?: string | null
+          width?: number | null
+        }
+        Update: {
+          duration_seconds?: number | null
+          feed_id?: string
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          kind?: string
+          original_filename?: string | null
+          provider?: string | null
+          storage_url?: string
+          thumbnail_url?: string | null
+          uploaded_at?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_media_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "feeds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feed_reports: {
+        Row: {
+          created_at: string
+          detail: string | null
+          feed_id: string
+          id: string
+          reason: Database["public"]["Enums"]["feed_report_reason"]
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolver_note: string | null
+          status: Database["public"]["Enums"]["feed_report_status"]
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          feed_id: string
+          id?: string
+          reason: Database["public"]["Enums"]["feed_report_reason"]
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolver_note?: string | null
+          status?: Database["public"]["Enums"]["feed_report_status"]
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          feed_id?: string
+          id?: string
+          reason?: Database["public"]["Enums"]["feed_report_reason"]
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolver_note?: string | null
+          status?: Database["public"]["Enums"]["feed_report_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_reports_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "feeds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
             referencedColumns: ["id"]
           },
         ]
@@ -658,13 +1239,57 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_push_tokens: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          last_seen_at?: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          banned_at: string | null
+          banned_by: string | null
+          banned_reason: string | null
           bio: string | null
           certification: string | null
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           diving_org: string | null
           id: string
+          is_banned: boolean
           nickname: string
           profile_image_url: string | null
           team_id: string | null
@@ -672,11 +1297,17 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          banned_at?: string | null
+          banned_by?: string | null
+          banned_reason?: string | null
           bio?: string | null
           certification?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           diving_org?: string | null
           id: string
+          is_banned?: boolean
           nickname: string
           profile_image_url?: string | null
           team_id?: string | null
@@ -684,11 +1315,17 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          banned_at?: string | null
+          banned_by?: string | null
+          banned_reason?: string | null
           bio?: string | null
           certification?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           diving_org?: string | null
           id?: string
+          is_banned?: boolean
           nickname?: string
           profile_image_url?: string | null
           team_id?: string | null
@@ -697,97 +1334,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "profiles_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profiles_team_fk"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      qna_answers: {
-        Row: {
-          author_id: string
-          content: string
-          created_at: string | null
-          id: string
-          question_id: string
-        }
-        Insert: {
-          author_id: string
-          content: string
-          created_at?: string | null
-          id?: string
-          question_id: string
-        }
-        Update: {
-          author_id?: string
-          content?: string
-          created_at?: string | null
-          id?: string
-          question_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "qna_answers_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "qna_answers_question_id_fkey"
-            columns: ["question_id"]
-            isOneToOne: false
-            referencedRelation: "qna_questions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      qna_questions: {
-        Row: {
-          accepted_answer_id: string | null
-          author_id: string
-          category: string
-          content: string
-          created_at: string | null
-          id: string
-          is_urgent: boolean | null
-          title: string
-        }
-        Insert: {
-          accepted_answer_id?: string | null
-          author_id: string
-          category: string
-          content: string
-          created_at?: string | null
-          id?: string
-          is_urgent?: boolean | null
-          title: string
-        }
-        Update: {
-          accepted_answer_id?: string | null
-          author_id?: string
-          category?: string
-          content?: string
-          created_at?: string | null
-          id?: string
-          is_urgent?: boolean | null
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "qna_questions_accepted_fk"
-            columns: ["accepted_answer_id"]
-            isOneToOne: false
-            referencedRelation: "qna_answers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "qna_questions_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1028,6 +1592,62 @@ export type Database = {
           },
         ]
       }
+      user_certifications: {
+        Row: {
+          card_filename: string
+          card_image_url: string
+          card_type: string
+          cert_number: string | null
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          issued_on: string | null
+          level: string
+          organization: string
+          provider: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          card_filename: string
+          card_image_url: string
+          card_type?: string
+          cert_number?: string | null
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          issued_on?: string | null
+          level: string
+          organization: string
+          provider?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          card_filename?: string
+          card_image_url?: string
+          card_type?: string
+          cert_number?: string | null
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          issued_on?: string | null
+          level?: string
+          organization?: string
+          provider?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_certifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_equipment: {
         Row: {
           category: string
@@ -1090,6 +1710,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      board_posts_increment_view: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
       bump_places_usage: {
         Args: { p_cap?: number }
         Returns: {
@@ -1107,9 +1731,39 @@ export type Database = {
       }
       is_schedule_invitee: { Args: { schedule_uuid: string }; Returns: boolean }
       is_schedule_owner: { Args: { schedule_uuid: string }; Returns: boolean }
+      register_push_token: {
+        Args: { p_device_label: string; p_platform: string; p_token: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      admin_role: "viewer" | "operator" | "superadmin"
+      board_category:
+        | "free"
+        | "question"
+        | "review"
+        | "gear"
+        | "meetup"
+        | "notice"
+      board_report_reason:
+        | "spam"
+        | "sexual"
+        | "violence"
+        | "harassment"
+        | "misinformation"
+        | "copyright"
+        | "other"
+      board_report_status: "pending" | "resolved" | "dismissed"
       dive_weather: "sunny" | "cloudy" | "rainy" | "night"
+      feed_report_reason:
+        | "spam"
+        | "sexual"
+        | "violence"
+        | "harassment"
+        | "misinformation"
+        | "copyright"
+        | "other"
+      feed_report_status: "pending" | "resolved" | "dismissed"
       feed_type: "log" | "normal" | "ad"
     }
     CompositeTypes: {
@@ -1238,7 +1892,36 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_role: ["viewer", "operator", "superadmin"],
+      board_category: [
+        "free",
+        "question",
+        "review",
+        "gear",
+        "meetup",
+        "notice",
+      ],
+      board_report_reason: [
+        "spam",
+        "sexual",
+        "violence",
+        "harassment",
+        "misinformation",
+        "copyright",
+        "other",
+      ],
+      board_report_status: ["pending", "resolved", "dismissed"],
       dive_weather: ["sunny", "cloudy", "rainy", "night"],
+      feed_report_reason: [
+        "spam",
+        "sexual",
+        "violence",
+        "harassment",
+        "misinformation",
+        "copyright",
+        "other",
+      ],
+      feed_report_status: ["pending", "resolved", "dismissed"],
       feed_type: ["log", "normal", "ad"],
     },
   },

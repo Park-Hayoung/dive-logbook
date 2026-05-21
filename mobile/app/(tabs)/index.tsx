@@ -85,6 +85,7 @@ type StatCardProps = {
   width: number;
   highlighted?: boolean;
   subtitle?: string;
+  onPress?: () => void;
 };
 
 function StatCard({
@@ -95,9 +96,11 @@ function StatCard({
   width,
   highlighted,
   subtitle,
+  onPress,
 }: StatCardProps) {
   return (
-    <View
+    <Pressable
+      onPress={onPress}
       style={{ width }}
       className={`p-5 rounded-3xl border ${
         highlighted
@@ -148,7 +151,7 @@ function StatCard({
           {subtitle}
         </Text>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -269,6 +272,7 @@ export default function HomeScreen() {
                     ? `이전 기록 ${profile.total_dives_at_signup}회 포함`
                     : undefined
                 }
+                onPress={() => router.push("/(tabs)/logbook")}
               />
               <StatCard
                 label="인증"
@@ -276,6 +280,7 @@ export default function HomeScreen() {
                 unit="회"
                 width={cardWidth}
                 icon={<ShieldCheck size={14} color={colors.brand[700]} />}
+                onPress={() => router.push("/(tabs)/logbook")}
               />
               <StatCard
                 label="미인증"
@@ -288,6 +293,7 @@ export default function HomeScreen() {
                     ? `이전 기록 ${profile.total_dives_at_signup}회 포함`
                     : undefined
                 }
+                onPress={() => router.push("/(tabs)/logbook")}
               />
               <StatCard
                 label="최대 수심"
@@ -295,6 +301,7 @@ export default function HomeScreen() {
                 unit={stats.maxDepth ? "m" : ""}
                 width={cardWidth}
                 icon={<Navigation size={14} color={colors.brand[700]} />}
+                onPress={() => router.push("/(tabs)/logbook")}
               />
               <StatCard
                 label="총 시간"
@@ -314,6 +321,7 @@ export default function HomeScreen() {
                 }
                 width={cardWidth}
                 icon={<Clock size={14} color={colors.brand[700]} />}
+                onPress={() => router.push("/(tabs)/logbook")}
               />
             </ScrollView>
 

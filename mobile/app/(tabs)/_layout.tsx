@@ -1,13 +1,13 @@
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import {
   Home,
   Globe,
   Book,
   User,
-  Plus,
+  MessagesSquare,
   type LucideIcon,
 } from "lucide-react-native";
-import { Pressable, Text, View, Platform } from "react-native";
+import { Text, View, Platform } from "react-native";
 
 import { colors } from "@/src/lib/colors";
 
@@ -50,7 +50,6 @@ function TabItem({ Icon, label, focused }: TabIconProps) {
 }
 
 export default function TabLayout() {
-  const router = useRouter();
   return (
     <Tabs
       screenOptions={{
@@ -94,40 +93,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="new-log-action"
+        name="board"
         options={{
-          tabBarButton: () => (
-            <View className="flex-1 items-center justify-center">
-              <Pressable
-                onPress={() => router.push("/log/new")}
-                accessibilityLabel="새 로그 기록"
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 28,
-                  backgroundColor: colors.brand[600],
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: -22,
-                  borderWidth: 4,
-                  borderColor: "#FFFFFF",
-                  ...Platform.select({
-                    ios: {
-                      shadowColor: colors.brand[600],
-                      shadowOpacity: 0.35,
-                      shadowRadius: 12,
-                      shadowOffset: { width: 0, height: 6 },
-                    },
-                    android: {
-                      elevation: 8,
-                    },
-                  }),
-                }}
-                className="active:scale-95"
-              >
-                <Plus color={colors.brand.fg} size={26} strokeWidth={3} />
-              </Pressable>
-            </View>
+          tabBarIcon: ({ focused }) => (
+            <TabItem Icon={MessagesSquare} label="게시판" focused={focused} />
           ),
         }}
       />

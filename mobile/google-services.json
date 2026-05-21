@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "753826568361",
+    "project_id": "divelog-457b1",
+    "storage_bucket": "divelog-457b1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:753826568361:android:dc6e167d69828f3ab5b1b8",
+        "android_client_info": {
+          "package_name": "com.woozoo.divelog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoxAY-MSMsm7lHyAkc2xk_mKs_wYg_ksc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

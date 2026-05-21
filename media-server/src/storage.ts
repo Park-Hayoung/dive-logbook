@@ -11,12 +11,14 @@ import { config } from "./config.js";
 //  - feeds: feed post images (one folder per user)
 //  - teams: team profile pictures (one folder per team)
 //  - certifications: C-card photos (one folder per user; multiple cards)
+//  - boards: community board post media (one folder per user; multiple posts)
 export const ALLOWED_KINDS = [
   "dives",
   "avatars",
   "feeds",
   "teams",
   "certifications",
+  "boards",
 ] as const;
 export type MediaKind = (typeof ALLOWED_KINDS)[number];
 

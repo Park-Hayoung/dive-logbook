@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import type { ViewStyle, StyleProp } from "react-native";
-import { Volume2, VolumeX } from "lucide-react-native";
+import { Play, Volume2, VolumeX } from "lucide-react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 
 import { useFeedVideoStore } from "@/src/store/feed-video-store";
@@ -70,6 +70,35 @@ export function FeedVideo({
           style={{ position: "absolute", width: "100%", height: "100%" }}
           resizeMode="cover"
         />
+      ) : null}
+      {/* 영상임을 명확히 알리는 Play 아이콘. 자동재생 시작되면 사라짐 (showPoster=false).
+          포스터 없는 경우에도 노출 — 검은 화면이 영상인지 사진인지 구분돼야 함. */}
+      {showPoster ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: "rgba(0,0,0,0.55)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Play size={22} color="#fff" fill="#fff" />
+          </View>
+        </View>
       ) : null}
       {onPress ? (
         <Pressable

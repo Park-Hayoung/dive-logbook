@@ -3,12 +3,6 @@ import { supabase } from "@/src/services/supabase";
 import { mediaStorage } from "@/src/services/media-storage";
 import type { MediaProvider } from "@/src/types/dive";
 
-// feed_media 테이블은 016 마이그레이션으로 추가됨. database.ts 타입이 재생성되기 전까지
-// `supabase.from("feed_media")` 가 컴파일 에러를 내므로 캐스팅으로 우회.
-// 적용 후 `npx supabase gen types typescript ...` 실행하면 캐스팅 제거 가능.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 export type FeedMedia = {
   id: string;
   feedId: string;
@@ -53,7 +47,7 @@ export function useFeedMedia(feedId: string | undefined) {
     queryKey: ["feed-media", feedId],
     enabled: !!feedId,
     queryFn: async (): Promise<FeedMedia[]> => {
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from("feed_media")
         .select("*")
         .eq("feed_id", feedId!)
@@ -114,7 +108,7 @@ export function useUploadFeedMedia() {
           ? await uploadThumbnail(input.file.thumbnailUri)
           : null;
 
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from("feed_media")
         .insert({
           feed_id: input.feedId,
@@ -140,7 +134,7 @@ export function useDeleteFeedMedia(feedId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (mediaId: string) => {
-      const { error } = await sb
+      const { error } = await supabase
         .from("feed_media")
         .delete()
         .eq("id", mediaId);

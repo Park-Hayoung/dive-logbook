@@ -128,6 +128,13 @@ function handlePress(n: Notification, router: ReturnType<typeof useRouter>) {
     router.push({ pathname: "/profile/[id]", params: { id: n.actor.id } });
   } else if (n.kind === "team_join_request" && n.teamId) {
     router.push({ pathname: "/team/[id]", params: { id: n.teamId } });
+  } else if (
+    (n.kind === "board_like" ||
+      n.kind === "board_comment" ||
+      n.kind === "board_reply") &&
+    n.boardPostId
+  ) {
+    router.push({ pathname: "/board/[id]", params: { id: n.boardPostId } });
   }
 }
 
@@ -242,6 +249,27 @@ function describe(n: Notification): {
       return {
         icon: <Users size={11} color="#D97706" />,
         message: `${name}님이 팀 "${n.teamName ?? ""}"에 가입을 요청했어요`,
+      };
+    case "board_like":
+      return {
+        icon: <Heart size={11} color="#EF4444" fill="#EF4444" />,
+        message: `${name}님이 게시글을 좋아해요${
+          n.boardPostTitle ? `: "${n.boardPostTitle}"` : ""
+        }`,
+      };
+    case "board_comment":
+      return {
+        icon: <MessageCircle size={11} color={colors.brand[700]} />,
+        message: `${name}님이 게시글에 댓글을 남겼어요${
+          n.commentContent ? `: ${n.commentContent}` : ""
+        }`,
+      };
+    case "board_reply":
+      return {
+        icon: <MessageCircle size={11} color={colors.brand[700]} />,
+        message: `${name}님이 회원님의 댓글에 답글을 남겼어요${
+          n.commentContent ? `: ${n.commentContent}` : ""
+        }`,
       };
   }
 }

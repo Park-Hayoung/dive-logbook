@@ -6,7 +6,10 @@ export type NotificationKind =
   | "like"
   | "comment"
   | "follow"
-  | "team_join_request";
+  | "team_join_request"
+  | "board_like"
+  | "board_comment"
+  | "board_reply";
 
 export type Notification = {
   id: string;
@@ -23,6 +26,8 @@ export type Notification = {
   commentContent?: string;
   teamId?: string;
   teamName?: string;
+  boardPostId?: string;
+  boardPostTitle?: string;
 };
 
 const LIMIT_PER_KIND = 30;
@@ -76,6 +81,26 @@ type TeamRequestRow = {
   team: { id: string; name: string; leader_id: string } | null;
 };
 
+type BoardPostLikeRow = {
+  post_id: string;
+  user_id: string;
+  created_at: string;
+  user: ProfileLite | null;
+  post: { id: string; title: string; author_id: string } | null;
+};
+
+type BoardCommentRow = {
+  id: string;
+  post_id: string;
+  parent_comment_id: string | null;
+  author_id: string;
+  content: string;
+  created_at: string;
+  author: ProfileLite | null;
+  post: { id: string; title: string; author_id: string } | null;
+  parent_comment: { id: string; author_id: string } | null;
+};
+
 const mapActor = (p: ProfileLite | null) =>
   p
     ? {
@@ -91,9 +116,15 @@ export function useNotifications(userId: string | undefined) {
     enabled: !!userId,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<Notification[]> => {
-      // Run all four lookups in parallel.
-      const [likesResp, commentsResp, followsResp, teamReqResp] =
-        await Promise.all([
+      // Run all lookups in parallel.
+      const [
+        likesResp,
+        commentsResp,
+        followsResp,
+        teamReqResp,
+        boardLikesResp,
+        boardCommentsResp,
+      ] = await Promise.all([
           supabase
             .from("feed_likes")
             .select(
@@ -131,12 +162,34 @@ export function useNotifications(userId: string | undefined) {
             .eq("role", "pending")
             .order("joined_at", { ascending: false })
             .limit(LIMIT_PER_KIND),
+          supabase
+            .from("board_post_likes")
+            .select(
+              `post_id, user_id, created_at,
+               user:profiles!user_id(id, nickname, profile_image_url),
+               post:board_posts!post_id(id, title, author_id)`,
+            )
+            .order("created_at", { ascending: false })
+            .limit(LIMIT_PER_KIND),
+          supabase
+            .from("board_comments")
+            .select(
+              `id, post_id, parent_comment_id, author_id, content, created_at,
+               author:profiles!author_id(id, nickname, profile_image_url),
+               post:board_posts!post_id(id, title, author_id),
+               parent_comment:board_comments!parent_comment_id(id, author_id)`,
+            )
+            .is("deleted_at", null)
+            .order("created_at", { ascending: false })
+            .limit(LIMIT_PER_KIND),
         ]);
 
       if (likesResp.error) wrap(likesResp.error);
       if (commentsResp.error) wrap(commentsResp.error);
       if (followsResp.error) wrap(followsResp.error);
       if (teamReqResp.error) wrap(teamReqResp.error);
+      if (boardLikesResp.error) wrap(boardLikesResp.error);
+      if (boardCommentsResp.error) wrap(boardCommentsResp.error);
 
       const likes = ((likesResp.data ?? []) as unknown as LikeRow[])
         .filter((r) => r.feed?.author_id === userId && r.user_id !== userId)
@@ -185,7 +238,65 @@ export function useNotifications(userId: string | undefined) {
           teamName: r.team?.name ?? "팀",
         }));
 
-      const merged = [...likes, ...comments, ...follows, ...teamRequests].sort(
+      const boardLikes = (
+        (boardLikesResp.data ?? []) as unknown as BoardPostLikeRow[]
+      )
+        .filter((r) => r.post?.author_id === userId && r.user_id !== userId)
+        .map<Notification>((r) => ({
+          id: `board_like:${r.post_id}:${r.user_id}`,
+          kind: "board_like",
+          createdAt: r.created_at,
+          actor: mapActor(r.user),
+          boardPostId: r.post_id,
+          boardPostTitle: truncate(r.post?.title ?? null, 40),
+        }));
+
+      // 한 쿼리로 가져온 board_comments 를 두 타입으로 분기:
+      //   - 최상위 댓글 → 글 작성자 알림 (board_comment)
+      //   - 대댓글 → 부모 댓글 작성자 알림 (board_reply)
+      const boardCommentRows = (boardCommentsResp.data ?? []) as unknown as BoardCommentRow[];
+      const boardComments = boardCommentRows
+        .filter(
+          (r) =>
+            !r.parent_comment_id &&
+            r.post?.author_id === userId &&
+            r.author_id !== userId,
+        )
+        .map<Notification>((r) => ({
+          id: `board_comment:${r.id}`,
+          kind: "board_comment",
+          createdAt: r.created_at,
+          actor: mapActor(r.author),
+          boardPostId: r.post_id,
+          boardPostTitle: truncate(r.post?.title ?? null, 30),
+          commentContent: truncate(r.content, 60),
+        }));
+      const boardReplies = boardCommentRows
+        .filter(
+          (r) =>
+            r.parent_comment_id &&
+            r.parent_comment?.author_id === userId &&
+            r.author_id !== userId,
+        )
+        .map<Notification>((r) => ({
+          id: `board_reply:${r.id}`,
+          kind: "board_reply",
+          createdAt: r.created_at,
+          actor: mapActor(r.author),
+          boardPostId: r.post_id,
+          boardPostTitle: truncate(r.post?.title ?? null, 30),
+          commentContent: truncate(r.content, 60),
+        }));
+
+      const merged = [
+        ...likes,
+        ...comments,
+        ...follows,
+        ...teamRequests,
+        ...boardLikes,
+        ...boardComments,
+        ...boardReplies,
+      ].sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );

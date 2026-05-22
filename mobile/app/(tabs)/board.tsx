@@ -7,9 +7,10 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Pencil, MessagesSquare } from "lucide-react-native";
+import { Pencil, MessagesSquare, Search, X } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
 import { colors } from "@/src/lib/colors";
@@ -28,8 +29,16 @@ const FILTER_TABS: { value: BoardCategoryFilter; label: string }[] = [
 export default function BoardScreen() {
   const router = useRouter();
   const [category, setCategory] = useState<BoardCategoryFilter>("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
   const { data: posts, isLoading, refetch, isRefetching } =
-    useBoardPosts(category);
+    useBoardPosts(category, submittedQuery);
+
+  const submitSearch = () => setSubmittedQuery(searchInput.trim());
+  const clearSearch = () => {
+    setSearchInput("");
+    setSubmittedQuery("");
+  };
 
   const header = (
     <View>
@@ -38,6 +47,43 @@ export default function BoardScreen() {
         <Text className="text-xs text-gray-500">
           다이버들과 자유롭게 이야기 나눠보세요
         </Text>
+      </View>
+      <View className="px-5 pb-2">
+        <View className="flex-row items-center bg-white border border-gray-200 rounded-full pl-4 pr-2 h-11">
+          <Pressable
+            onPress={submitSearch}
+            hitSlop={8}
+            accessibilityLabel="검색"
+          >
+            <Search size={18} color="#6B7280" />
+          </Pressable>
+          <TextInput
+            value={searchInput}
+            onChangeText={setSearchInput}
+            onSubmitEditing={submitSearch}
+            returnKeyType="search"
+            placeholder="제목, 내용, 작성자 검색"
+            placeholderTextColor="#9CA3AF"
+            className="flex-1 ml-2 mr-2 text-base text-gray-900"
+          />
+          {searchInput.length > 0 && (
+            <Pressable
+              onPress={clearSearch}
+              hitSlop={8}
+              accessibilityLabel="검색어 지우기"
+              className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center"
+            >
+              <X size={14} color="#6B7280" />
+            </Pressable>
+          )}
+        </View>
+        {submittedQuery.length > 0 && (
+          <View className="flex-row items-center mt-2">
+            <Text className="text-xs text-gray-500">
+              <Text className="font-bold text-gray-900">'{submittedQuery}'</Text> 검색 결과
+            </Text>
+          </View>
+        )}
       </View>
       <ScrollView
         horizontal
@@ -92,9 +138,11 @@ export default function BoardScreen() {
               <MessagesSquare size={24} color="#0891B2" />
             </View>
             <Text className="text-xs font-bold text-gray-500 text-center">
-              {category === "all"
-                ? "첫 글의 주인공이 되어보세요"
-                : `${FILTER_TABS.find((t) => t.value === category)?.label} 게시글이 없어요`}
+              {submittedQuery
+                ? `'${submittedQuery}' 검색 결과가 없어요`
+                : category === "all"
+                  ? "첫 글의 주인공이 되어보세요"
+                  : `${FILTER_TABS.find((t) => t.value === category)?.label} 게시글이 없어요`}
             </Text>
           </View>
         </View>

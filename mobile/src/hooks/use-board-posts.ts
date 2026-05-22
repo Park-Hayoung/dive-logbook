@@ -120,10 +120,33 @@ const previewOf = (content: string, max = 120): string => {
 // List
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useBoardPosts(category: BoardCategoryFilter) {
+// PostgREST .or() 안에서 콤마/괄호는 구분자라 escape 필요. % _ 는 ilike 와일드카드.
+const escapeForOrIlike = (raw: string): string =>
+  raw.replace(/[%_,()\\]/g, (ch) => `\\${ch}`);
+
+export function useBoardPosts(
+  category: BoardCategoryFilter,
+  searchQuery?: string,
+) {
+  const trimmed = searchQuery?.trim() ?? "";
   return useQuery({
-    queryKey: ["board-posts", category],
+    queryKey: ["board-posts", category, trimmed],
     queryFn: async (): Promise<BoardPostListItem[]> => {
+      // 검색어 있으면 먼저 닉네임 매치 author_id 들을 구한다.
+      let nicknameAuthorIds: string[] = [];
+      if (trimmed) {
+        const escaped = escapeForOrIlike(trimmed);
+        const { data: profileRows, error: profileErr } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("nickname", `%${escaped}%`)
+          .limit(50);
+        if (profileErr) throw profileErr;
+        nicknameAuthorIds = (profileRows ?? []).map(
+          (r) => (r as { id: string }).id,
+        );
+      }
+
       let q = supabase
         .from("board_posts")
         .select(
@@ -139,6 +162,17 @@ export function useBoardPosts(category: BoardCategoryFilter) {
         .limit(50);
       if (category !== "all") {
         q = q.eq("category", category);
+      }
+      if (trimmed) {
+        const escaped = escapeForOrIlike(trimmed);
+        const orParts = [
+          `title.ilike.%${escaped}%`,
+          `content.ilike.%${escaped}%`,
+        ];
+        if (nicknameAuthorIds.length > 0) {
+          orParts.push(`author_id.in.(${nicknameAuthorIds.join(",")})`);
+        }
+        q = q.or(orParts.join(","));
       }
       const { data, error } = await q;
       if (error) throw error;
